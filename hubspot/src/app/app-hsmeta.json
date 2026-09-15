@@ -1,0 +1,30 @@
+{
+  "uid": "crm_integration_app",
+  "type": "app",
+  "config": {
+    "description": "Private CRM integration app for synchronizing contacts, companies, and deals with the internal sales platform.",
+    "name": "CRM Integration Platform",
+    "distribution": "private",
+    "auth": {
+      "type": "static",
+      "requiredScopes": [
+        "oauth",
+        "crm.objects.contacts.read",
+        "crm.objects.contacts.write",
+        "crm.objects.companies.read",
+        "crm.objects.companies.write",
+        "crm.objects.deals.read",
+        "crm.objects.deals.write"
+      ],
+      "optionalScopes": [],
+      "conditionallyRequiredScopes": []
+    },
+    "permittedUrls": {
+      "fetch": [
+        "https://api.hubapi.com"
+      ],
+      "iframe": [],
+      "img": []
+    }
+  }
+}

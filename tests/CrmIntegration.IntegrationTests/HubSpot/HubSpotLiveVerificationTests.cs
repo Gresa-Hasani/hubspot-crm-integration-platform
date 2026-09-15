@@ -56,13 +56,15 @@ public class HubSpotLiveVerificationTests
         var company = await client.CreateCompanyAsync(new Dictionary<string, string?>
         {
             ["name"] = $"Acme Technologies (CRM Platform Test {suffix})",
-            ["domain"] = $"acme-test-{suffix}.example"
+            ["domain"] = $"acme-test-{suffix}.com"
         });
         _output.WriteLine($"Created company {company.Id}");
 
+        // HubSpot's live email validation rejects the RFC 2606 ".example" TLD (not a resolvable
+        // domain) — example.com is real/resolvable and accepted, while still obviously test data.
         var contact = await client.CreateContactAsync(new Dictionary<string, string?>
         {
-            ["email"] = $"alice.test.{suffix}@acme-test.example",
+            ["email"] = $"alice.test.{suffix}@example.com",
             ["firstname"] = "Alice",
             ["lastname"] = $"Smith (Test {suffix})"
         });

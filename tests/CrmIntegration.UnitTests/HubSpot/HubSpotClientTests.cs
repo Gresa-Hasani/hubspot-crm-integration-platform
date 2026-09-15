@@ -124,6 +124,19 @@ public class HubSpotClientTests
         Assert.Equal(["100", "200"], ids);
     }
 
+    [Fact]
+    public async Task GetAssociatedIdsAsync_AcceptsNumericToObjectId()
+    {
+        // Discovered against a real HubSpot portal: v4 associations returns toObjectId as a JSON
+        // number, unlike v3 objects which returns id as a string. Both must parse correctly.
+        var (client, _) = CreateClient(_ => JsonResponse(HttpStatusCode.OK,
+            """{"results":[{"toObjectId":869154931910}]}"""));
+
+        var ids = await client.GetAssociatedIdsAsync(HubSpotObjectType.Company, "1", HubSpotObjectType.Contact);
+
+        Assert.Equal(["869154931910"], ids);
+    }
+
     [Theory]
     [InlineData(HttpStatusCode.BadRequest, typeof(HubSpotBadRequestException))]
     [InlineData(HttpStatusCode.Unauthorized, typeof(HubSpotUnauthorizedException))]

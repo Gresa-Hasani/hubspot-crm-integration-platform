@@ -6,6 +6,7 @@ namespace CrmIntegration.Infrastructure.HubSpot.Dtos;
 public class HubSpotObjectDto
 {
     [JsonPropertyName("id")]
+    [JsonConverter(typeof(StringOrNumberJsonConverter))]
     public string Id { get; set; } = string.Empty;
 
     [JsonPropertyName("properties")]
@@ -106,5 +107,6 @@ public class HubSpotAssociationsResponseDto
 public class HubSpotAssociationResultDto
 {
     [JsonPropertyName("toObjectId")]
+    [JsonConverter(typeof(StringOrNumberJsonConverter))]
     public string ToObjectId { get; set; } = string.Empty;
 }

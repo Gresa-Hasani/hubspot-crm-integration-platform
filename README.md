@@ -1,8 +1,48 @@
 # HubSpot CRM Integration & Sales Automation Platform
 
-Status: **Phase 1 — Foundation** (solution structure, database, Docker, Swagger, health checks).
-The full README (architecture diagrams, demo script, API docs) will be written in Phase 12 once the
-rest of the platform is implemented — this is a placeholder covering what exists today.
+Status: **Phase 3 — HubSpot Client** (foundation, core CRM domain, and a HubSpot API client are in
+place). The full README (architecture diagrams, demo script, API docs) will be written in Phase 12
+once the rest of the platform is implemented — this is a placeholder covering what exists today.
+
+## HubSpot setup
+
+The platform authenticates to HubSpot using a **private app access token** (HubSpot's recommended
+approach for a single-portal server-to-server integration like this one — see
+[docs/DECISIONS.md](docs/DECISIONS.md) for why this was chosen over OAuth for the current phase).
+
+1. In your HubSpot developer/test account: **Settings → Integrations → Private Apps → Create a
+   private app**.
+2. Under the **Scopes** tab, grant:
+   - `crm.objects.contacts.read`, `crm.objects.contacts.write`
+   - `crm.objects.companies.read`, `crm.objects.companies.write`
+   - `crm.objects.deals.read`, `crm.objects.deals.write`
+     (associations between these objects are covered by the same scopes — no separate
+     association scope exists in the CRM v4 API used here)
+3. Copy the generated access token.
+4. In your local `.env` (never commit this file), set:
+   ```
+   HubSpot__AccessToken=<your token>
+   ```
+   `HubSpot__BaseUrl` defaults to `https://api.hubapi.com` and normally doesn't need changing.
+
+**Never** put a real token in `.env.example`, appsettings.json, source code, or a commit message —
+`.env.example` must only ever contain placeholders. `.env` is gitignored.
+
+Deal stage and lifecycle stage names are portal-specific (a custom pipeline's stage ids are
+arbitrary generated strings, not the enum names used internally). `HubSpot:DealStageMapping` and
+`HubSpot:LifecycleStageMapping` in `appsettings.json` map this project's internal enums to your
+portal's actual HubSpot property values — the defaults match HubSpot's out-of-the-box "Sales"
+pipeline; override them if your test portal uses a custom pipeline.
+
+### Running HubSpot client tests
+
+- Unit tests (`tests/CrmIntegration.UnitTests/HubSpot/`) run against a fake HTTP handler — no
+  network access or real token required:
+  ```
+  dotnet test tests/CrmIntegration.UnitTests --filter FullyQualifiedName~HubSpot
+  ```
+- There is currently no automated integration test against the real HubSpot API (see the Phase 3
+  completion report for what was verified manually against a live account, if anything).
 
 ## Running Phase 1 locally
 

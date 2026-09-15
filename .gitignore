@@ -1,0 +1,29 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+
+# Secrets / environment
+.env
+*.local.json
+appsettings.*.local.json
+
+# IDE
+.vs/
+.vscode/
+*.swp
+
+# Test results
+TestResults/
+coverage/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# EF Core
+*.db

@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CrmIntegration.Api/CrmIntegration.Api.csproj" />
+    <Project Path="src/CrmIntegration.Application/CrmIntegration.Application.csproj" />
+    <Project Path="src/CrmIntegration.Domain/CrmIntegration.Domain.csproj" />
+    <Project Path="src/CrmIntegration.Infrastructure/CrmIntegration.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CrmIntegration.IntegrationTests/CrmIntegration.IntegrationTests.csproj" />
+    <Project Path="tests/CrmIntegration.UnitTests/CrmIntegration.UnitTests.csproj" />
+  </Folder>
+</Solution>

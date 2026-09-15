@@ -1,13 +1,17 @@
+using System.Net.Http.Headers;
 using CrmIntegration.Application.Common;
 using CrmIntegration.Application.Companies;
 using CrmIntegration.Application.Configuration;
 using CrmIntegration.Application.Contacts;
 using CrmIntegration.Application.Deals;
+using CrmIntegration.Application.Integrations.HubSpot;
+using CrmIntegration.Infrastructure.HubSpot;
 using CrmIntegration.Infrastructure.Persistence;
 using CrmIntegration.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace CrmIntegration.Infrastructure;
 
@@ -32,6 +36,14 @@ public static class DependencyInjection
         services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<IContactRepository, ContactRepository>();
         services.AddScoped<IDealRepository, DealRepository>();
+
+        services.AddHttpClient<IHubSpotClient, HubSpotClient>((serviceProvider, client) =>
+        {
+            var hubSpotOptions = serviceProvider.GetRequiredService<IOptions<HubSpotOptions>>().Value;
+            client.BaseAddress = new Uri(hubSpotOptions.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(hubSpotOptions.RequestTimeoutSeconds);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", hubSpotOptions.AccessToken);
+        });
 
         return services;
     }

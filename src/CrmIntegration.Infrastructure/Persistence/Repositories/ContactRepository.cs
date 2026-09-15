@@ -24,4 +24,7 @@ public class ContactRepository : IContactRepository
 
     public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default) =>
         _context.Contacts.AnyAsync(c => c.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<Contact>> FindByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default) =>
+        await _context.Contacts.Where(c => c.Email == normalizedEmail).ToListAsync(cancellationToken);
 }

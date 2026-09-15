@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\CrmIntegration.Api\CrmIntegration.Api.csproj" />
     <ProjectReference Include="..\..\src\CrmIntegration.Infrastructure\CrmIntegration.Infrastructure.csproj" />
+    <ProjectReference Include="..\CrmIntegration.UnitTests\CrmIntegration.UnitTests.csproj" />
   </ItemGroup>
 
 </Project>

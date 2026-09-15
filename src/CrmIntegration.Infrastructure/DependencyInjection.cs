@@ -5,6 +5,7 @@ using CrmIntegration.Application.Configuration;
 using CrmIntegration.Application.Contacts;
 using CrmIntegration.Application.Deals;
 using CrmIntegration.Application.Integrations.HubSpot;
+using CrmIntegration.Application.Sync;
 using CrmIntegration.Infrastructure.HubSpot;
 using CrmIntegration.Infrastructure.Persistence;
 using CrmIntegration.Infrastructure.Persistence.Repositories;
@@ -36,6 +37,9 @@ public static class DependencyInjection
         services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<IContactRepository, ContactRepository>();
         services.AddScoped<IDealRepository, DealRepository>();
+        services.AddScoped<IEntityMappingRepository, EntityMappingRepository>();
+        services.AddScoped<ISyncJobRepository, SyncJobRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
         services.AddHttpClient<IHubSpotClient, HubSpotClient>((serviceProvider, client) =>
         {

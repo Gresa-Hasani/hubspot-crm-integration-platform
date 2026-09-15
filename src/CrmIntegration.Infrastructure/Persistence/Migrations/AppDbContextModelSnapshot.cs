@@ -282,6 +282,9 @@ namespace CrmIntegration.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("InternalId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -403,8 +406,16 @@ namespace CrmIntegration.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Direction")
                         .IsRequired()
@@ -418,6 +429,17 @@ namespace CrmIntegration.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("text");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("FailureCategory")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("InternalEntityId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("RecordsFailed")
                         .HasColumnType("integer");
@@ -438,7 +460,13 @@ namespace CrmIntegration.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CorrelationId");
+
                     b.HasIndex("StartedAt");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("EntityType", "InternalEntityId");
 
                     b.ToTable("SyncJobs", (string)null);
                 });

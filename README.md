@@ -1,8 +1,56 @@
 # HubSpot CRM Integration & Sales Automation Platform
 
-Status: **Phase 3 — HubSpot Client** (foundation, core CRM domain, and a HubSpot API client are in
-place). The full README (architecture diagrams, demo script, API docs) will be written in Phase 12
-once the rest of the platform is implemented — this is a placeholder covering what exists today.
+Status: **Phase 4 — Synchronization Engine** (foundation, core CRM domain, a HubSpot API client,
+and bidirectional sync are in place). The full README (architecture diagrams, demo script, API
+docs) will be written in Phase 12 once the rest of the platform is implemented — this is a
+placeholder covering what exists today.
+
+## Synchronization engine
+
+Contacts, Companies, and Deals can be synchronized in both directions between PostgreSQL and
+HubSpot. See:
+- [docs/FIELD_MAPPING.md](docs/FIELD_MAPPING.md) — exactly which internal fields map to which
+  HubSpot properties, and why some don't map at all.
+- [docs/SYNC_POLICY.md](docs/SYNC_POLICY.md) — conflict handling, duplicate detection, retry/
+  backoff, dead-lettering, and an honest statement of what consistency guarantees this system
+  does (and does not) provide, with sequence diagrams for both sync directions.
+
+### Development sync endpoints
+
+**Security note (temporary, development-only):** these endpoints have no authentication or
+authorization yet. JWT bearer infrastructure exists (Phase 1) but token issuance and
+`[Authorize]`/role-policy enforcement are Phase 8 scope. Do not expose this API outside a trusted
+local/development environment until Phase 8 is complete.
+
+```
+POST /api/sync/contacts/{id}/to-hubspot        # sync an internal Contact -> HubSpot
+POST /api/sync/companies/{id}/to-hubspot
+POST /api/sync/deals/{id}/to-hubspot
+POST /api/sync/hubspot/contacts/{hubSpotId}    # import/update from a HubSpot Contact
+POST /api/sync/hubspot/companies/{hubSpotId}
+POST /api/sync/hubspot/deals/{hubSpotId}
+GET  /api/sync/jobs/{id}                       # inspect one sync job's outcome
+GET  /api/sync/jobs?limit=50                   # recent sync jobs
+POST /api/sync/jobs/{id}/retry                 # manually retry a DeadLettered job
+```
+
+Example (after starting the API and creating a Company via `POST /api/companies`):
+```
+curl -X POST http://localhost:5291/api/sync/companies/{id}/to-hubspot
+```
+The response is a `SyncJobResponse` — check its `status` (`Succeeded`/`Failed`/`DeadLettered`)
+and `failureCategory`/`errorMessage` if it didn't succeed.
+
+### Running sync engine tests
+
+```
+dotnet test tests/CrmIntegration.UnitTests --filter FullyQualifiedName~Sync
+dotnet test tests/CrmIntegration.IntegrationTests --filter FullyQualifiedName~Sync
+```
+The integration tests use a fake `IHubSpotClient` against the real Dockerized PostgreSQL — no
+real HubSpot account is needed for the deterministic suite. A separate opt-in test
+(`LiveSyncVerificationTests`) exercises the real HubSpot API end-to-end; see its class-level
+comment for how to run it, and the Phase 4 completion report for what was verified.
 
 ## HubSpot setup
 
@@ -83,10 +131,10 @@ pipeline; override them if your test portal uses a custom pipeline.
 ## Solution layout
 
 ```
-src/CrmIntegration.Api            ASP.NET Core Web API, DI composition, Swagger, health checks
-src/CrmIntegration.Application    Business logic, DTOs, service interfaces (empty scaffold so far)
+src/CrmIntegration.Api            ASP.NET Core Web API, controllers, DI composition, Swagger, health checks
+src/CrmIntegration.Application    Business logic: CRM services, HubSpot client port, sync engine (Sync/)
 src/CrmIntegration.Domain         Entities and enums, no external dependencies
-src/CrmIntegration.Infrastructure EF Core (Npgsql), entity configurations, migrations
+src/CrmIntegration.Infrastructure EF Core (Npgsql), HubSpot HTTP client, repositories, migrations
 tests/CrmIntegration.UnitTests           xUnit unit tests
 tests/CrmIntegration.IntegrationTests    xUnit integration tests (WebApplicationFactory)
 ```

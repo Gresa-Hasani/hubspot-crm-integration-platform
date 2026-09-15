@@ -65,7 +65,9 @@ public enum SyncDirection
 
 public enum SyncStatus
 {
+    Pending,
     Running,
-    Completed,
-    Failed
+    Succeeded,
+    Failed,
+    DeadLettered
 }

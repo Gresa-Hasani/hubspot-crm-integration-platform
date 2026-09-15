@@ -16,7 +16,9 @@ public class EntityMappingConfiguration : IEntityTypeConfiguration<EntityMapping
         builder.Property(m => m.ExternalSystem).HasConversion<string>().HasMaxLength(50);
 
         builder.HasIndex(m => m.ExternalId);
+        // Prevents two internal records from mapping to the same HubSpot object.
         builder.HasIndex(m => new { m.EntityType, m.ExternalSystem, m.ExternalId }).IsUnique();
+        // Prevents the same internal record from getting two mappings to the same external system.
         builder.HasIndex(m => new { m.EntityType, m.InternalId, m.ExternalSystem }).IsUnique();
     }
 }

@@ -2,6 +2,8 @@ using System.Text;
 using CrmIntegration.Application;
 using CrmIntegration.Application.Common;
 using CrmIntegration.Application.Configuration;
+using CrmIntegration.Application.Integrations.HubSpot;
+using CrmIntegration.Application.Sync;
 using CrmIntegration.Infrastructure;
 using CrmIntegration.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -48,7 +50,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-builder.Services.AddApplication();
+builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var jwtSection = builder.Configuration.GetSection(JwtOptions.SectionName);
@@ -90,6 +92,12 @@ app.UseExceptionHandler(errorApp =>
         {
             EntityNotFoundException => (StatusCodes.Status404NotFound, exception.Message),
             DomainValidationException => (StatusCodes.Status400BadRequest, exception.Message),
+            SyncAmbiguousMatchException => (StatusCodes.Status409Conflict, exception.Message),
+            SyncMappingConflictException => (StatusCodes.Status409Conflict, exception.Message),
+            HubSpotConflictException => (StatusCodes.Status409Conflict, exception.Message),
+            HubSpotRateLimitedException or HubSpotServerException or HubSpotTransientException =>
+                (StatusCodes.Status503ServiceUnavailable, "HubSpot is temporarily unavailable; the sync job has been recorded and can be retried."),
+            HubSpotApiException => (StatusCodes.Status502BadGateway, "HubSpot rejected the request; see the sync job's FailureCategory for details."),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.")
         };
 

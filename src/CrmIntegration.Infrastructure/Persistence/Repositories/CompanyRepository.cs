@@ -24,4 +24,10 @@ public class CompanyRepository : ICompanyRepository
 
     public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default) =>
         _context.Companies.AnyAsync(c => c.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<Company>> FindByNormalizedDomainAsync(string normalizedDomain, CancellationToken cancellationToken = default) =>
+        await _context.Companies.Where(c => c.Domain == normalizedDomain).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Company>> FindByNormalizedNameAsync(string normalizedName, CancellationToken cancellationToken = default) =>
+        await _context.Companies.Where(c => c.Name == normalizedName).ToListAsync(cancellationToken);
 }

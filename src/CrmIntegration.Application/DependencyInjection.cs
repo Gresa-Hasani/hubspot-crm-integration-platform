@@ -6,6 +6,7 @@ using CrmIntegration.Application.Sync;
 using CrmIntegration.Application.Sync.Mapping;
 using CrmIntegration.Application.Sync.Matching;
 using CrmIntegration.Application.Sync.Services;
+using CrmIntegration.Application.Webhooks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -38,6 +39,13 @@ public static class DependencyInjection
         services.AddScoped<ICompanySyncService, CompanySyncService>();
         services.AddScoped<IDealSyncService, DealSyncService>();
         services.AddScoped<ISyncJobRetryService, SyncJobRetryService>();
+
+        services.AddOptions<WebhookOptions>()
+            .Bind(configuration.GetSection(WebhookOptions.SectionName));
+        services.AddScoped<IHubSpotWebhookSignatureValidator, HubSpotWebhookSignatureValidator>();
+        services.AddScoped<IWebhookIngestionService, WebhookIngestionService>();
+        services.AddScoped<IIntegrationEventProcessor, IntegrationEventProcessor>();
+        services.AddScoped<IIntegrationEventRetryService, IntegrationEventRetryService>();
 
         return services;
     }

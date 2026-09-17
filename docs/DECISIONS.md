@@ -78,3 +78,41 @@ idempotent (mapping-aware, duplicate-search-aware) is that re-running it from sc
 building separate "resume" logic would duplicate that safety property in a second code path for
 no real benefit. The original and retry jobs share a `CorrelationId` so they're easy to find
 together.
+
+## Why HubSpot webhook signature v3, not v1/v2? (Phase 5)
+
+Verified directly against HubSpot's current documentation rather than assumed: v1/v2 are hex-
+encoded, have no timestamp, and provide no replay protection; HubSpot's own docs describe v3 (Base64,
+HMAC-SHA256 over method+URI+body+timestamp, with a 5-minute freshness window) as "the latest and
+most secure version." v1/v2 remain supported only for backwards compatibility with old
+integrations — a new implementation has no reason to use them. See `docs/WEBHOOKS.md` for the
+full algorithm and sources.
+
+## Why is event claiming a single conditional UPDATE, not row-locking? (Phase 5)
+
+`IIntegrationEventRepository.TryClaimNextAsync` issues one `UPDATE ... WHERE Id = x AND Status =
+'Received'` (via EF Core's `ExecuteUpdateAsync`) rather than `SELECT ... FOR UPDATE SKIP LOCKED`
+or an external distributed lock. The conditional `WHERE` clause already makes the state transition
+atomic at the database level — two concurrent workers racing for the same row will have exactly
+one `UPDATE` affect a row and the other affect zero, with no explicit locking needed. Adding
+row-level locking or a distributed lock service would be solving a problem this simpler approach
+already solves, for a portfolio-scale single-database deployment.
+
+## Why two separate, bounded retry layers instead of one? (Phase 5)
+
+Phase 4's `HubSpotRetryExecutor` (tight, second-scale exponential backoff, bounded by
+`SyncRetryOptions.MaxAttempts`) and Phase 5's `IntegrationEventProcessor` (coarse, poll-interval-
+scale re-attempts, bounded by `WebhookOptions.MaxProcessingAttempts`) solve different problems: the
+former absorbs brief blips (a rate limit, one flaky 5xx) within a single sync call; the latter
+gives a longer-outage extra wall-clock time across separate processing passes without re-running a
+tight retry loop that already ran to completion. A deterministic failure (Phase 4 throws rather
+than returning a `DeadLettered` `SyncJob`) is retried at **neither** layer — see
+`docs/WEBHOOKS.md`'s "Retry boundary" for the full table and reasoning.
+
+## Why does IntegrationEvent.Payload store parsed fields, not the raw HTTP request? (Phase 5)
+
+Storing the full raw request would mean storing headers (including, if ever misconfigured,
+Authorization) and unbounded/unvalidated JSON. `IntegrationEvent.Payload` stores only the already-
+parsed, already-validated event fields (eventId, subscriptionType, objectId, propertyName,
+occurredAt, attemptNumber) as JSON — sufficient for diagnostics and replay, with nothing beyond
+what's needed. See `docs/WEBHOOKS.md`'s "Security considerations".

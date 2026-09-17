@@ -6,9 +6,11 @@ using CrmIntegration.Application.Contacts;
 using CrmIntegration.Application.Deals;
 using CrmIntegration.Application.Integrations.HubSpot;
 using CrmIntegration.Application.Sync;
+using CrmIntegration.Application.Webhooks;
 using CrmIntegration.Infrastructure.HubSpot;
 using CrmIntegration.Infrastructure.Persistence;
 using CrmIntegration.Infrastructure.Persistence.Repositories;
+using CrmIntegration.Infrastructure.Webhooks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IEntityMappingRepository, EntityMappingRepository>();
         services.AddScoped<ISyncJobRepository, SyncJobRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<IIntegrationEventRepository, IntegrationEventRepository>();
 
         services.AddHttpClient<IHubSpotClient, HubSpotClient>((serviceProvider, client) =>
         {
@@ -48,6 +51,9 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(hubSpotOptions.RequestTimeoutSeconds);
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", hubSpotOptions.AccessToken);
         });
+
+        services.AddSingleton<IWebhookPayloadParser, WebhookPayloadParser>();
+        services.AddHostedService<IntegrationEventProcessingWorker>();
 
         return services;
     }

@@ -50,11 +50,12 @@ public enum EntityType
 
 public enum IntegrationEventStatus
 {
-    Pending,
+    Received,
     Processing,
-    Completed,
+    Processed,
     Failed,
-    DeadLetter
+    DeadLettered,
+    Ignored
 }
 
 public enum SyncDirection

@@ -1,9 +1,9 @@
 # HubSpot CRM Integration & Sales Automation Platform
 
-Status: **Phase 4 — Synchronization Engine** (foundation, core CRM domain, a HubSpot API client,
-and bidirectional sync are in place). The full README (architecture diagrams, demo script, API
-docs) will be written in Phase 12 once the rest of the platform is implemented — this is a
-placeholder covering what exists today.
+Status: **Phase 5 — Webhooks & Event Processing** (foundation, core CRM domain, a HubSpot API
+client, bidirectional sync, and durable webhook ingestion/processing are in place). The full
+README (architecture diagrams, demo script, API docs) will be written in Phase 12 once the rest of
+the platform is implemented — this is a placeholder covering what exists today.
 
 ## Synchronization engine
 
@@ -51,6 +51,32 @@ The integration tests use a fake `IHubSpotClient` against the real Dockerized Po
 real HubSpot account is needed for the deterministic suite. A separate opt-in test
 (`LiveSyncVerificationTests`) exercises the real HubSpot API end-to-end; see its class-level
 comment for how to run it, and the Phase 4 completion report for what was verified.
+
+## Webhooks & event processing
+
+HubSpot webhook deliveries (Contact/Company/Deal creation and property-change events) are
+persisted durably and processed asynchronously via the same Phase 4 sync services above — see
+[docs/WEBHOOKS.md](docs/WEBHOOKS.md) for the full architecture, the exact HubSpot signature
+algorithm implemented (v3) and why, idempotency/batch/retry/dead-letter behavior, and the current
+live-verification limitations (no real HubSpot delivery has been received — see that document for
+why and what to do about it in a real deployment).
+
+```
+POST /api/webhooks/hubspot                     # HubSpot webhook target (signature-verified)
+GET  /api/webhooks/events?limit=50             # recent IntegrationEvents
+GET  /api/webhooks/events/{id}
+POST /api/webhooks/events/{id}/retry           # manually retry a DeadLettered event
+```
+
+**Security note (temporary, development-only):** the inspection/replay endpoints above have no
+authentication yet (Phase 8 scope). The ingestion endpoint is protected by HubSpot's signature but
+is otherwise unauthenticated too. Do not expose this API outside a trusted local/development
+environment until Phase 8 is complete.
+
+```
+dotnet test tests/CrmIntegration.UnitTests --filter FullyQualifiedName~Webhooks
+dotnet test tests/CrmIntegration.IntegrationTests --filter FullyQualifiedName~Webhooks
+```
 
 ## HubSpot setup
 

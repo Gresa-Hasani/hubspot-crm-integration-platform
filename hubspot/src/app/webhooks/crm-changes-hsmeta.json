@@ -1,0 +1,20 @@
+{
+  "uid": "crm_changes_webhook",
+  "type": "webhooks",
+  "config": {
+    "settings": {
+      "targetUrl": "https://REPLACE-WITH-YOUR-DEPLOYED-API-HOST/api/webhooks/hubspot",
+      "maxConcurrentRequests": 10
+    },
+    "subscriptions": {
+      "crmObjects": [
+        { "subscriptionType": "object.creation", "objectType": "contact", "active": true },
+        { "subscriptionType": "object.propertyChange", "objectType": "contact", "active": true },
+        { "subscriptionType": "object.creation", "objectType": "company", "active": true },
+        { "subscriptionType": "object.propertyChange", "objectType": "company", "active": true },
+        { "subscriptionType": "object.creation", "objectType": "deal", "active": true },
+        { "subscriptionType": "object.propertyChange", "objectType": "deal", "active": true }
+      ]
+    }
+  }
+}

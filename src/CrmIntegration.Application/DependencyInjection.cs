@@ -3,6 +3,7 @@ using CrmIntegration.Application.Companies;
 using CrmIntegration.Application.Contacts;
 using CrmIntegration.Application.Deals;
 using CrmIntegration.Application.Integrations.HubSpot;
+using CrmIntegration.Application.Reporting;
 using CrmIntegration.Application.Sync;
 using CrmIntegration.Application.Sync.Mapping;
 using CrmIntegration.Application.Sync.Matching;
@@ -53,6 +54,9 @@ public static class DependencyInjection
         services.AddScoped<IDealStageAutomationService, DealStageAutomationService>();
         services.AddScoped<IContactLifecycleAutomationService, ContactLifecycleAutomationService>();
         services.AddScoped<IAutomationRetryService, AutomationRetryService>();
+
+        services.AddScoped<ISalesReportingService, SalesReportingService>();
+        services.AddScoped<IOperationsReportingService, OperationsReportingService>();
 
         return services;
     }

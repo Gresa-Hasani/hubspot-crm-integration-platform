@@ -163,3 +163,64 @@ persistence" boundary for the same reason: a failed automation is visible
 (`AutomationExecution.Status = Failed`) and retryable, never silently lost, but it also never rolls
 back or blocks the state change that triggered it. See `docs/SALES_AUTOMATION.md` "Transaction
 boundaries".
+
+## Why does Revenue use the DealStageTransition timestamp instead of Deal.CreatedAt or Deal.CloseDate? (Phase 7)
+
+Deal.CreatedAt is when the internal row was created — for a Deal imported from HubSpot, or created
+directly at ClosedWon, that has nothing to do with when it actually became Closed Won. Deal.CloseDate
+is a HubSpot-editable property (an "expected/actual close date" a sales rep sets) with no guarantee
+it matches the Stage's real transition time, and it can be null or set well before/after the real
+event. Phase 6 already persists the authoritative fact — the exact moment `Stage` changed to
+`ClosedWon` — as a `DealStageTransition` row. Using anything else as "revenue date" would silently
+misdate every report built on it. See `docs/REPORTING.md` "Revenue — formulas and date source".
+
+## Why doesn't the Conversion (or Lifecycle-transition) report compute funnel percentages? (Phase 7)
+
+A "conversion rate from stage A to stage B" implicitly assumes deals move through a fixed sequence.
+`DealStage`/`LifecycleStage` are not schema-enforced as sequential — `CreateDealRequest` allows any
+starting stage, and Phase 6's own live HubSpot verification proved a Deal can leave `ClosedWon` and
+re-enter it. A synthesized funnel percentage over data that doesn't actually funnel would look
+precise while being misleading — worse than not reporting it at all. Both reports instead expose
+only observed `(FromStage, ToStage) -> COUNT` transition data, which is always true regardless of
+whether the underlying stage model is sequential. See `docs/REPORTING.md` "Conversion — what this
+report deliberately does NOT do".
+
+## Why is ExcludedWonDealsWithoutTransitionHistory a global count, not scoped to the requested date range? (Phase 7)
+
+A Won deal with no `DealStageTransition` into `ClosedWon` has no date at all to check against any
+range — it isn't "excluded because it falls outside [from, to]," it's excluded because it has no
+timeline position whatsoever. Reporting it as a range-scoped number would imply the deal might
+appear under a different date range, which isn't true. Reporting the true global count is the
+honest signal: "this many Won deals in the system can never appear in any Revenue-by-date result,"
+independent of what range is requested.
+
+## Why does Sales Overview's "average deal size" differ from Revenue's "average won deal size"? (Phase 7)
+
+They intentionally answer different questions: Overview's average is across every Deal in the
+system regardless of stage/status (a general sense of typical deal size across the whole
+pipeline), while Revenue's average is scoped to Won deals within the requested date range (typical
+size of deals that actually closed). Naming them identically would make the JSON shape ambiguous
+about which one a caller was looking at; keeping them as two separately-labeled, separately-scoped
+fields costs nothing and avoids that ambiguity.
+
+## Why weren't dealStage/dealStatus generic filters added across the reporting endpoints? (Phase 7)
+
+The Phase 7 spec listed them as optional. Pipeline already partitions its entire result by Stage,
+and Outcomes already partitions by Status/won-lost — adding a redundant filter parameter on top of
+a report whose entire output IS that partition would add API surface without adding real
+capability. Building a generic filtering framework across every endpoint "just in case" would be
+exactly the kind of premature complexity the project avoids elsewhere (see the Phase 4 sync-policy
+decisions for the same philosophy). `from`/`to` were added only where they answer a real, asked-for
+question (Revenue, Outcomes, Conversion time-scoping).
+
+## Why does the reporting layer have its own repository interfaces instead of reusing IDealRepository etc.? (Phase 7)
+
+The existing CRM repositories (`IDealRepository`, `IContactRepository`, ...) expose simple
+CRUD-shaped methods (`GetById`, `List`, `Add`) suited to the services that own each entity's
+lifecycle. Reporting needs purpose-built aggregate queries (`GROUP BY`, `SUM`, `AVG`, multi-table
+joins projected into flat rows) that don't belong on those interfaces — adding them there would
+blur CRM-entity ownership with read-only analytics, and would tempt the reporting service to load
+full entity lists and aggregate in memory instead of pushing the aggregation into PostgreSQL.
+Dedicated `ISalesReportingRepository`/`IOperationsReportingRepository` interfaces keep both
+responsibilities clean, mirroring the same "one focused repository per concern" pattern Phase 6
+already established for `IDealStageTransitionRepository`, `IAutomationExecutionRepository`, etc.

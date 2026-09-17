@@ -1,10 +1,11 @@
 # HubSpot CRM Integration & Sales Automation Platform
 
-Status: **Phase 6 — Sales Workflow Automation** (foundation, core CRM domain, a HubSpot API
-client, bidirectional sync, durable webhook ingestion/processing, and Deal/Contact stage-change
-automation with Closed-Won onboarding are in place). The full README (architecture diagrams, demo
-script, API docs) will be written in Phase 12 once the rest of the platform is implemented — this
-is a placeholder covering what exists today.
+Status: **Phase 7 — Sales Reporting & Analytics** (foundation, core CRM domain, a HubSpot API
+client, bidirectional sync, durable webhook ingestion/processing, Deal/Contact stage-change
+automation with Closed-Won onboarding, and a read-only Sales Operations reporting/analytics API are
+in place). The full README (architecture diagrams, demo script, API docs) will be written in
+Phase 12 once the rest of the platform is implemented — this is a placeholder covering what exists
+today.
 
 ## Synchronization engine
 
@@ -111,6 +112,38 @@ verification (Company/Contact/Deal created in a real developer portal, moved to 
 back, automation observed end-to-end, then cleaned up) is documented in the Phase 6 completion
 report rather than automated, for the same reason `LiveSyncVerificationTests` isn't part of the
 deterministic suite.
+
+## Sales reporting & analytics
+
+A read-only reporting/query layer over the CRM, sync, webhook, and automation data — see
+[docs/REPORTING.md](docs/REPORTING.md) for every formula, the Closed-Won revenue-date source,
+currency/timezone policy, and documented limitations (no fabricated conversion funnels, no
+invented pre-Phase-6 stage-history).
+
+**Security note (temporary, development-only):** unauthenticated, matching every other endpoint in
+this project today (Phase 8 scope).
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/reports/sales/overview` | Total contacts/companies/deals, open pipeline, won revenue, average deal size, win rate, onboarding count |
+| `GET /api/reports/sales/pipeline` | Deal count/value/average by stage, % of open pipeline |
+| `GET /api/reports/sales/revenue?from=&to=&groupBy=day\|month` | Won revenue over time (bucketed by the Closed-Won transition date) |
+| `GET /api/reports/sales/outcomes?from=&to=` | Won/lost/open counts and rates |
+| `GET /api/reports/sales/conversion?from=&to=` | Observed Deal stage-transition counts |
+| `GET /api/reports/sales/velocity` | Cycle-time statistics, best-effort time-per-stage |
+| `GET /api/reports/sales/lifecycle` | Contact lifecycle-stage distribution and observed transitions |
+| `GET /api/reports/sales/onboarding` | Onboarding record counts/status/recent handoffs |
+| `GET /api/reports/sales/activity?limit=50` | Normalized recent-activity feed |
+| `GET /api/reports/operations/health` | Safe aggregate sync/webhook/automation status counts |
+
+```
+dotnet test tests/CrmIntegration.UnitTests --filter FullyQualifiedName~Reporting
+dotnet test tests/CrmIntegration.IntegrationTests --filter FullyQualifiedName~Reporting
+```
+The integration tests seed a small deterministic dataset directly into the real Dockerized
+PostgreSQL (dated far in the future to isolate it from other tests' data) and verify every major
+report's numbers against explicitly pre-calculated expected values — see the Phase 7 completion
+report for the full dataset and results.
 
 ## HubSpot setup
 

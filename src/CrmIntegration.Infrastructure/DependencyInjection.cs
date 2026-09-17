@@ -6,6 +6,7 @@ using CrmIntegration.Application.Configuration;
 using CrmIntegration.Application.Contacts;
 using CrmIntegration.Application.Deals;
 using CrmIntegration.Application.Integrations.HubSpot;
+using CrmIntegration.Application.Reporting;
 using CrmIntegration.Application.Sync;
 using CrmIntegration.Application.Webhooks;
 using CrmIntegration.Infrastructure.HubSpot;
@@ -48,6 +49,8 @@ public static class DependencyInjection
         services.AddScoped<IContactLifecycleTransitionRepository, ContactLifecycleTransitionRepository>();
         services.AddScoped<IAutomationExecutionRepository, AutomationExecutionRepository>();
         services.AddScoped<IOnboardingRepository, OnboardingRepository>();
+        services.AddScoped<ISalesReportingRepository, SalesReportingRepository>();
+        services.AddScoped<IOperationsReportingRepository, OperationsReportingRepository>();
 
         services.AddHttpClient<IHubSpotClient, HubSpotClient>((serviceProvider, client) =>
         {

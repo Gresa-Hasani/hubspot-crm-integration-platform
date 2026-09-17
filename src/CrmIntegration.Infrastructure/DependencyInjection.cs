@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using CrmIntegration.Application.Automation;
 using CrmIntegration.Application.Common;
 using CrmIntegration.Application.Companies;
 using CrmIntegration.Application.Configuration;
@@ -43,6 +44,10 @@ public static class DependencyInjection
         services.AddScoped<ISyncJobRepository, SyncJobRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IIntegrationEventRepository, IntegrationEventRepository>();
+        services.AddScoped<IDealStageTransitionRepository, DealStageTransitionRepository>();
+        services.AddScoped<IContactLifecycleTransitionRepository, ContactLifecycleTransitionRepository>();
+        services.AddScoped<IAutomationExecutionRepository, AutomationExecutionRepository>();
+        services.AddScoped<IOnboardingRepository, OnboardingRepository>();
 
         services.AddHttpClient<IHubSpotClient, HubSpotClient>((serviceProvider, client) =>
         {

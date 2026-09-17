@@ -1,3 +1,4 @@
+using CrmIntegration.Application.Automation;
 using CrmIntegration.Application.Common;
 using CrmIntegration.Application.Companies;
 using CrmIntegration.Application.Contacts;
@@ -11,6 +12,7 @@ public class DealService : IDealService
     private readonly IDealRepository _repository;
     private readonly ICompanyRepository _companyRepository;
     private readonly IContactRepository _contactRepository;
+    private readonly IDealStageAutomationService _dealStageAutomationService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
 
@@ -18,12 +20,14 @@ public class DealService : IDealService
         IDealRepository repository,
         ICompanyRepository companyRepository,
         IContactRepository contactRepository,
+        IDealStageAutomationService dealStageAutomationService,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
     {
         _repository = repository;
         _companyRepository = companyRepository;
         _contactRepository = contactRepository;
+        _dealStageAutomationService = dealStageAutomationService;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
     }
@@ -40,7 +44,7 @@ public class DealService : IDealService
         return deal is null ? null : ToResponse(deal);
     }
 
-    public async Task<DealResponse> CreateAsync(CreateDealRequest request, CancellationToken cancellationToken = default)
+    public async Task<DealResponse> CreateAsync(CreateDealRequest request, CancellationToken cancellationToken = default, string? correlationId = null)
     {
         await EnsureReferencesExistAsync(request.CompanyId, request.ContactId, cancellationToken);
         var currency = ValidateAndNormalizeCurrency(request.Currency);
@@ -66,16 +70,23 @@ public class DealService : IDealService
         await _repository.AddAsync(deal, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        // previousStage: null — a brand-new Deal has no prior known stage. If it's created
+        // directly in ClosedWon, that still counts as "transitioned into ClosedWon" (see
+        // docs/SALES_AUTOMATION.md "Detecting stage transitions").
+        await _dealStageAutomationService.EvaluateAsync(deal, previousStage: null, TransitionSource.InternalUpdate, correlationId ?? Guid.NewGuid().ToString(), cancellationToken: cancellationToken);
+
         return ToResponse(deal);
     }
 
-    public async Task<DealResponse> UpdateAsync(Guid id, UpdateDealRequest request, CancellationToken cancellationToken = default)
+    public async Task<DealResponse> UpdateAsync(Guid id, UpdateDealRequest request, CancellationToken cancellationToken = default, string? correlationId = null)
     {
         var deal = await _repository.GetByIdAsync(id, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Deal), id);
 
         await EnsureReferencesExistAsync(request.CompanyId, request.ContactId, cancellationToken);
         var currency = ValidateAndNormalizeCurrency(request.Currency);
+
+        var previousStage = deal.Stage;
 
         deal.Name = request.Name.Trim();
         deal.CompanyId = request.CompanyId;
@@ -89,6 +100,8 @@ public class DealService : IDealService
         deal.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _dealStageAutomationService.EvaluateAsync(deal, previousStage, TransitionSource.InternalUpdate, correlationId ?? Guid.NewGuid().ToString(), cancellationToken: cancellationToken);
 
         return ToResponse(deal);
     }

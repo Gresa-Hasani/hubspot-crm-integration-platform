@@ -19,6 +19,7 @@ public class ContactServiceTests
         return new ContactService(
             contactRepository,
             companyRepository,
+            new NoOpContactLifecycleAutomationService(),
             unitOfWork,
             new FixedTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)));
     }

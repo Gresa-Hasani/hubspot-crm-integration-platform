@@ -1,6 +1,8 @@
+using CrmIntegration.Application.Automation;
 using CrmIntegration.Application.Common;
 using CrmIntegration.Application.Companies;
 using CrmIntegration.Domain.Entities;
+using CrmIntegration.Domain.Enums;
 
 namespace CrmIntegration.Application.Contacts;
 
@@ -8,17 +10,20 @@ public class ContactService : IContactService
 {
     private readonly IContactRepository _repository;
     private readonly ICompanyRepository _companyRepository;
+    private readonly IContactLifecycleAutomationService _lifecycleAutomationService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
 
     public ContactService(
         IContactRepository repository,
         ICompanyRepository companyRepository,
+        IContactLifecycleAutomationService lifecycleAutomationService,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider)
     {
         _repository = repository;
         _companyRepository = companyRepository;
+        _lifecycleAutomationService = lifecycleAutomationService;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
     }
@@ -35,7 +40,7 @@ public class ContactService : IContactService
         return contact is null ? null : ToResponse(contact);
     }
 
-    public async Task<ContactResponse> CreateAsync(CreateContactRequest request, CancellationToken cancellationToken = default)
+    public async Task<ContactResponse> CreateAsync(CreateContactRequest request, CancellationToken cancellationToken = default, string? correlationId = null)
     {
         await EnsureCompanyExistsAsync(request.CompanyId, cancellationToken);
 
@@ -59,15 +64,19 @@ public class ContactService : IContactService
         await _repository.AddAsync(contact, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        await _lifecycleAutomationService.EvaluateAsync(contact, previousStage: null, TransitionSource.InternalUpdate, correlationId ?? Guid.NewGuid().ToString(), cancellationToken: cancellationToken);
+
         return ToResponse(contact);
     }
 
-    public async Task<ContactResponse> UpdateAsync(Guid id, UpdateContactRequest request, CancellationToken cancellationToken = default)
+    public async Task<ContactResponse> UpdateAsync(Guid id, UpdateContactRequest request, CancellationToken cancellationToken = default, string? correlationId = null)
     {
         var contact = await _repository.GetByIdAsync(id, cancellationToken)
             ?? throw new EntityNotFoundException(nameof(Contact), id);
 
         await EnsureCompanyExistsAsync(request.CompanyId, cancellationToken);
+
+        var previousStage = contact.LifecycleStage;
 
         contact.FirstName = request.FirstName.Trim();
         contact.LastName = request.LastName.Trim();
@@ -80,6 +89,8 @@ public class ContactService : IContactService
         contact.UpdatedAt = _timeProvider.GetUtcNow().UtcDateTime;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _lifecycleAutomationService.EvaluateAsync(contact, previousStage, TransitionSource.InternalUpdate, correlationId ?? Guid.NewGuid().ToString(), cancellationToken: cancellationToken);
 
         return ToResponse(contact);
     }

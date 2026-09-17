@@ -20,6 +20,7 @@ public class DealServiceTests
             dealRepository,
             companyRepository,
             contactRepository,
+            new NoOpDealStageAutomationService(),
             new FakeUnitOfWork(),
             new FixedTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)));
     }

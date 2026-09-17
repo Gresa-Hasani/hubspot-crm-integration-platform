@@ -39,7 +39,8 @@ public class ContactSyncServiceTests
             NullLogger<SyncJobExecutor>.Instance);
 
         return new ContactSyncService(
-            _contactRepository, _mappingRepository, mapper, matchService, _hubSpotClient, jobExecutor, _unitOfWork,
+            _contactRepository, _mappingRepository, mapper, matchService, _hubSpotClient, jobExecutor,
+            new NoOpContactLifecycleAutomationService(), _unitOfWork,
             new FixedTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)),
             NullLogger<ContactSyncService>.Instance);
     }
@@ -107,7 +108,7 @@ public class ContactSyncServiceTests
         var matchService = new ContactMatchService(_contactRepository, hubSpot);
         var retryExecutor = new HubSpotRetryExecutor(new InstantRetryDelayProvider(), Options.Create(new SyncRetryOptions()), NullLogger<HubSpotRetryExecutor>.Instance);
         var jobExecutor = new SyncJobExecutor(_syncJobRepository, _auditLogRepository, retryExecutor, _unitOfWork, new FixedTimeProvider(DateTimeOffset.UtcNow), Options.Create(new SyncRetryOptions()), NullLogger<SyncJobExecutor>.Instance);
-        var service = new ContactSyncService(_contactRepository, _mappingRepository, mapper, matchService, hubSpot, jobExecutor, _unitOfWork, new FixedTimeProvider(DateTimeOffset.UtcNow), NullLogger<ContactSyncService>.Instance);
+        var service = new ContactSyncService(_contactRepository, _mappingRepository, mapper, matchService, hubSpot, jobExecutor, new NoOpContactLifecycleAutomationService(), _unitOfWork, new FixedTimeProvider(DateTimeOffset.UtcNow), NullLogger<ContactSyncService>.Instance);
 
         await Assert.ThrowsAsync<SyncAmbiguousMatchException>(() => service.SyncToHubSpotAsync(contact.Id, "corr-1"));
 

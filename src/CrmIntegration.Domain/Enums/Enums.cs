@@ -72,3 +72,27 @@ public enum SyncStatus
     Failed,
     DeadLettered
 }
+
+/// <summary>Where a Deal stage / Contact lifecycle-stage change originated, for DealStageTransition/ContactLifecycleTransition.</summary>
+public enum TransitionSource
+{
+    HubSpotWebhook,
+    HubSpotSync,
+    InternalUpdate,
+    ManualSync
+}
+
+public enum AutomationType
+{
+    DealClosedWonOnboarding,
+    ContactLifecycleTransition
+}
+
+public enum AutomationStatus
+{
+    Pending,
+    Running,
+    Succeeded,
+    Skipped,
+    Failed
+}

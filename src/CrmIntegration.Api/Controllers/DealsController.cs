@@ -28,11 +28,14 @@ public class DealsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<DealResponse>> Create(CreateDealRequest request, CancellationToken cancellationToken)
     {
-        var created = await _dealService.CreateAsync(request, cancellationToken);
+        var created = await _dealService.CreateAsync(request, cancellationToken, CorrelationId());
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<DealResponse>> Update(Guid id, UpdateDealRequest request, CancellationToken cancellationToken) =>
-        Ok(await _dealService.UpdateAsync(id, request, cancellationToken));
+        Ok(await _dealService.UpdateAsync(id, request, cancellationToken, CorrelationId()));
+
+    private string CorrelationId() =>
+        Request.Headers["X-Correlation-ID"].FirstOrDefault() ?? Guid.NewGuid().ToString();
 }

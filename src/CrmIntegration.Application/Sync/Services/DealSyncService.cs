@@ -1,3 +1,4 @@
+using CrmIntegration.Application.Automation;
 using CrmIntegration.Application.Common;
 using CrmIntegration.Application.Deals;
 using CrmIntegration.Application.Integrations.HubSpot;
@@ -20,6 +21,7 @@ public class DealSyncService : IDealSyncService
     private readonly IDealHubSpotMapper _mapper;
     private readonly IHubSpotClient _hubSpotClient;
     private readonly ISyncJobExecutor _syncJobExecutor;
+    private readonly IDealStageAutomationService _dealStageAutomationService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<DealSyncService> _logger;
@@ -30,6 +32,7 @@ public class DealSyncService : IDealSyncService
         IDealHubSpotMapper mapper,
         IHubSpotClient hubSpotClient,
         ISyncJobExecutor syncJobExecutor,
+        IDealStageAutomationService dealStageAutomationService,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
         ILogger<DealSyncService> logger)
@@ -39,6 +42,7 @@ public class DealSyncService : IDealSyncService
         _mapper = mapper;
         _hubSpotClient = hubSpotClient;
         _syncJobExecutor = syncJobExecutor;
+        _dealStageAutomationService = dealStageAutomationService;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _logger = logger;
@@ -48,9 +52,9 @@ public class DealSyncService : IDealSyncService
         _syncJobExecutor.ExecuteAsync(EntityType.Deal, SyncDirection.InternalToHubSpot, dealId, null, correlationId,
             ct => SyncToHubSpotCoreAsync(dealId, ct), cancellationToken);
 
-    public Task<SyncJob> SyncFromHubSpotAsync(string hubSpotId, string correlationId, CancellationToken cancellationToken = default) =>
+    public Task<SyncJob> SyncFromHubSpotAsync(string hubSpotId, string correlationId, CancellationToken cancellationToken = default, TransitionSource source = TransitionSource.HubSpotSync) =>
         _syncJobExecutor.ExecuteAsync(EntityType.Deal, SyncDirection.HubSpotToInternal, null, hubSpotId, correlationId,
-            ct => SyncFromHubSpotCoreAsync(hubSpotId, ct), cancellationToken);
+            ct => SyncFromHubSpotCoreAsync(hubSpotId, correlationId, source, ct), cancellationToken);
 
     private async Task<SyncActionResult> SyncToHubSpotCoreAsync(Guid dealId, CancellationToken cancellationToken)
     {
@@ -142,7 +146,7 @@ public class DealSyncService : IDealSyncService
         _logger.LogInformation("Associated {FromType} {FromHubSpotId} -> {ToType} {ToHubSpotId}", fromType, fromHubSpotId, toType, counterpartMapping.ExternalId);
     }
 
-    private async Task<SyncActionResult> SyncFromHubSpotCoreAsync(string hubSpotId, CancellationToken cancellationToken)
+    private async Task<SyncActionResult> SyncFromHubSpotCoreAsync(string hubSpotId, string correlationId, TransitionSource source, CancellationToken cancellationToken)
     {
         var record = await _hubSpotClient.GetDealAsync(hubSpotId, _mapper.HubSpotProperties, cancellationToken)
             ?? throw new DomainValidationException($"HubSpot deal '{hubSpotId}' was not found.");
@@ -151,6 +155,7 @@ public class DealSyncService : IDealSyncService
         Deal? deal = null;
         SyncResultKind kind;
         var now = _timeProvider.GetUtcNow().UtcDateTime;
+        DealStage? previousStage = null;
 
         if (mapping is not null)
         {
@@ -163,6 +168,7 @@ public class DealSyncService : IDealSyncService
 
         if (deal is not null)
         {
+            previousStage = deal.Stage;
             _mapper.ApplyHubSpotProperties(deal, record);
             deal.UpdatedAt = now;
             deal.LastSyncedAt = now;
@@ -205,6 +211,12 @@ public class DealSyncService : IDealSyncService
         mapping!.LastSyncedAt = now;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Automation runs only after the authoritative Deal state is durably persisted above —
+        // see docs/SALES_AUTOMATION.md "Transaction boundaries". kind == Imported means this Deal
+        // didn't exist internally before this sync, so previousStage stays null (no prior known
+        // stage to compare against) rather than being treated as "no change".
+        await _dealStageAutomationService.EvaluateAsync(deal, previousStage, source, correlationId, cancellationToken: cancellationToken);
 
         return new SyncActionResult(kind, deal.Id, hubSpotId);
     }

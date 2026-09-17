@@ -1,3 +1,4 @@
+using CrmIntegration.Application.Automation;
 using CrmIntegration.Application.Common;
 using CrmIntegration.Application.Contacts;
 using CrmIntegration.Application.Integrations.HubSpot;
@@ -17,6 +18,7 @@ public class ContactSyncService : IContactSyncService
     private readonly IContactMatchService _matchService;
     private readonly IHubSpotClient _hubSpotClient;
     private readonly ISyncJobExecutor _syncJobExecutor;
+    private readonly IContactLifecycleAutomationService _lifecycleAutomationService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<ContactSyncService> _logger;
@@ -28,6 +30,7 @@ public class ContactSyncService : IContactSyncService
         IContactMatchService matchService,
         IHubSpotClient hubSpotClient,
         ISyncJobExecutor syncJobExecutor,
+        IContactLifecycleAutomationService lifecycleAutomationService,
         IUnitOfWork unitOfWork,
         TimeProvider timeProvider,
         ILogger<ContactSyncService> logger)
@@ -38,6 +41,7 @@ public class ContactSyncService : IContactSyncService
         _matchService = matchService;
         _hubSpotClient = hubSpotClient;
         _syncJobExecutor = syncJobExecutor;
+        _lifecycleAutomationService = lifecycleAutomationService;
         _unitOfWork = unitOfWork;
         _timeProvider = timeProvider;
         _logger = logger;
@@ -47,9 +51,9 @@ public class ContactSyncService : IContactSyncService
         _syncJobExecutor.ExecuteAsync(EntityType.Contact, SyncDirection.InternalToHubSpot, contactId, null, correlationId,
             ct => SyncToHubSpotCoreAsync(contactId, ct), cancellationToken);
 
-    public Task<SyncJob> SyncFromHubSpotAsync(string hubSpotId, string correlationId, CancellationToken cancellationToken = default) =>
+    public Task<SyncJob> SyncFromHubSpotAsync(string hubSpotId, string correlationId, CancellationToken cancellationToken = default, TransitionSource source = TransitionSource.HubSpotSync) =>
         _syncJobExecutor.ExecuteAsync(EntityType.Contact, SyncDirection.HubSpotToInternal, null, hubSpotId, correlationId,
-            ct => SyncFromHubSpotCoreAsync(hubSpotId, ct), cancellationToken);
+            ct => SyncFromHubSpotCoreAsync(hubSpotId, correlationId, source, ct), cancellationToken);
 
     private async Task<SyncActionResult> SyncToHubSpotCoreAsync(Guid contactId, CancellationToken cancellationToken)
     {
@@ -153,7 +157,7 @@ public class ContactSyncService : IContactSyncService
         _logger.LogInformation("Associated Contact {ContactHubSpotId} -> Company {CompanyHubSpotId}", contactHubSpotId, companyMapping.ExternalId);
     }
 
-    private async Task<SyncActionResult> SyncFromHubSpotCoreAsync(string hubSpotId, CancellationToken cancellationToken)
+    private async Task<SyncActionResult> SyncFromHubSpotCoreAsync(string hubSpotId, string correlationId, TransitionSource source, CancellationToken cancellationToken)
     {
         var record = await _hubSpotClient.GetContactAsync(hubSpotId, _mapper.HubSpotProperties, cancellationToken)
             ?? throw new DomainValidationException($"HubSpot contact '{hubSpotId}' was not found.");
@@ -161,6 +165,7 @@ public class ContactSyncService : IContactSyncService
         var mapping = await _mappingRepository.GetByExternalIdAsync(EntityType.Contact, hubSpotId, cancellationToken: cancellationToken);
         Contact? contact = null;
         SyncResultKind kind;
+        LifecycleStage? previousLifecycleStage = null;
 
         if (mapping is not null)
         {
@@ -175,6 +180,7 @@ public class ContactSyncService : IContactSyncService
 
         if (contact is not null)
         {
+            previousLifecycleStage = contact.LifecycleStage;
             _mapper.ApplyHubSpotProperties(contact, record);
             contact.UpdatedAt = now;
             contact.LastSyncedAt = now;
@@ -254,6 +260,8 @@ public class ContactSyncService : IContactSyncService
         mapping!.LastSyncedAt = now;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _lifecycleAutomationService.EvaluateAsync(contact, previousLifecycleStage, source, correlationId, cancellationToken: cancellationToken);
 
         return new SyncActionResult(kind, contact.Id, hubSpotId);
     }

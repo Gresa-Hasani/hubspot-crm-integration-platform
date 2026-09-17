@@ -26,7 +26,7 @@ public class DealSyncServiceTests
         var retryExecutor = new HubSpotRetryExecutor(new InstantRetryDelayProvider(), Options.Create(new SyncRetryOptions { MaxAttempts = 3, BaseDelay = TimeSpan.FromMilliseconds(1) }), NullLogger<HubSpotRetryExecutor>.Instance);
         var jobExecutor = new SyncJobExecutor(_syncJobRepository, _auditLogRepository, retryExecutor, _unitOfWork, new FixedTimeProvider(DateTimeOffset.UtcNow), Options.Create(new SyncRetryOptions { MaxAttempts = 3, BaseDelay = TimeSpan.FromMilliseconds(1) }), NullLogger<SyncJobExecutor>.Instance);
 
-        return new DealSyncService(_dealRepository, _mappingRepository, mapper, hubSpotClient, jobExecutor, _unitOfWork, new FixedTimeProvider(DateTimeOffset.UtcNow), NullLogger<DealSyncService>.Instance);
+        return new DealSyncService(_dealRepository, _mappingRepository, mapper, hubSpotClient, jobExecutor, new NoOpDealStageAutomationService(), _unitOfWork, new FixedTimeProvider(DateTimeOffset.UtcNow), NullLogger<DealSyncService>.Instance);
     }
 
     private Deal AddDeal(Guid? companyId = null, Guid? contactId = null)

@@ -26,5 +26,10 @@ public class OnboardingRecordConfiguration : IEntityTypeConfiguration<Onboarding
             .WithMany()
             .HasForeignKey(o => o.CompanyId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(o => o.Contact)
+            .WithMany()
+            .HasForeignKey(o => o.ContactId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

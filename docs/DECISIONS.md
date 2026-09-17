@@ -116,3 +116,50 @@ Authorization) and unbounded/unvalidated JSON. `IntegrationEvent.Payload` stores
 parsed, already-validated event fields (eventId, subscriptionType, objectId, propertyName,
 occurredAt, attemptNumber) as JSON — sufficient for diagnostics and replay, with nothing beyond
 what's needed. See `docs/WEBHOOKS.md`'s "Security considerations".
+
+## Why is AutomationExecution.IdempotencyKey derived per-transition, not per-Deal? (Phase 6)
+
+A naive `DealClosedWonOnboarding:{dealId}` key would make it impossible to distinguish "this Deal
+has never triggered onboarding automation" from "this Deal already went through Closed Won once
+and came back" — the second Closed Won entry needs its own auditable `AutomationExecution` row
+(the spec is explicit that re-entering Closed Won must still produce a fresh, visible attempt), but
+must not create a second `OnboardingRecord`. Keying by `DealStageTransition.Id` instead solves
+exactly this: every meaningful transition gets its own execution row, while the actual duplicate-
+`OnboardingRecord` protection comes from `OnboardingRecords.DealId`'s own unique index (a Phase 1
+constraint, not new) and `OnboardingService`'s own DealId lookup — two different constraints for
+two different invariants, not one constraint doing double duty. See `docs/SALES_AUTOMATION.md`
+"Re-entering Closed Won".
+
+## Why is automation idempotency enforced at both the application layer and the database? (Phase 6)
+
+`AutomationExecutor` checks for an existing terminal execution before doing any work — this avoids
+a redundant `INSERT` attempt (and its associated `SaveChangesAsync` round-trip) in the overwhelming
+majority of calls, which are not concurrent races. But an application-level check-then-insert is
+inherently racy under real concurrency (two callers can both pass the check before either commits),
+so `AutomationExecutions.IdempotencyKey` also has a database-level unique index as the actual
+correctness guarantee, with the resulting Postgres unique-violation translated to
+`SyncMappingConflictException` — the same translation `UnitOfWork` already performs for
+`EntityMappings` (Phase 4) and `OnboardingRecords.DealId` (Phase 6). This mirrors the general
+pattern established for `IIntegrationEventRepository.TryClaimNextAsync` (Phase 5): the database
+constraint is the source of truth, the application check is an optimization on top of it, not a
+replacement for it.
+
+## Why does Contact lifecycle automation attach no side-effecting business action? (Phase 6)
+
+Every real LifecycleStage transition is recorded and run through the same
+`AutomationExecutor`/idempotency machinery as Closed-Won onboarding, but no email, marketing
+campaign enrollment, or task creation is fabricated for any specific stage. The Phase 6
+specification is explicit that inventing such integrations (with no corresponding infrastructure —
+no email service, no task system — actually built) would be exactly the kind of fake complexity
+the project avoids elsewhere. This still delivers real value: a durable, already-idempotent,
+audited hook that a later phase can attach a genuine action to without redesigning this pipeline.
+
+## Why does automation run after the triggering save, not inside the same transaction? (Phase 6)
+
+A Deal's Stage (and a Contact's LifecycleStage) must never depend on whether downstream automation
+succeeds — the entity update is the authoritative, already-durable fact; onboarding is a
+consequence of it, not a precondition for it. This mirrors Phase 5's "process only after durable
+persistence" boundary for the same reason: a failed automation is visible
+(`AutomationExecution.Status = Failed`) and retryable, never silently lost, but it also never rolls
+back or blocks the state change that triggered it. See `docs/SALES_AUTOMATION.md` "Transaction
+boundaries".

@@ -1,5 +1,6 @@
 using CrmIntegration.Application.Sync.Services;
 using CrmIntegration.Domain.Entities;
+using CrmIntegration.Domain.Enums;
 
 namespace CrmIntegration.UnitTests.TestDoubles;
 
@@ -16,7 +17,7 @@ public class FakeContactSyncService : IContactSyncService
     public Task<SyncJob> SyncToHubSpotAsync(Guid contactId, string correlationId, CancellationToken cancellationToken = default) =>
         throw new NotImplementedException();
 
-    public Task<SyncJob> SyncFromHubSpotAsync(string hubSpotId, string correlationId, CancellationToken cancellationToken = default)
+    public Task<SyncJob> SyncFromHubSpotAsync(string hubSpotId, string correlationId, CancellationToken cancellationToken = default, TransitionSource source = TransitionSource.HubSpotSync)
     {
         CallCount++;
         return Task.FromResult(OnSyncFromHubSpot!(hubSpotId, correlationId));
@@ -46,7 +47,7 @@ public class FakeDealSyncService : IDealSyncService
     public Task<SyncJob> SyncToHubSpotAsync(Guid dealId, string correlationId, CancellationToken cancellationToken = default) =>
         throw new NotImplementedException();
 
-    public Task<SyncJob> SyncFromHubSpotAsync(string hubSpotId, string correlationId, CancellationToken cancellationToken = default)
+    public Task<SyncJob> SyncFromHubSpotAsync(string hubSpotId, string correlationId, CancellationToken cancellationToken = default, TransitionSource source = TransitionSource.HubSpotSync)
     {
         CallCount++;
         return Task.FromResult(OnSyncFromHubSpot!(hubSpotId, correlationId));

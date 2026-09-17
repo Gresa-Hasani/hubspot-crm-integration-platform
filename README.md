@@ -1,9 +1,10 @@
 # HubSpot CRM Integration & Sales Automation Platform
 
-Status: **Phase 5 — Webhooks & Event Processing** (foundation, core CRM domain, a HubSpot API
-client, bidirectional sync, and durable webhook ingestion/processing are in place). The full
-README (architecture diagrams, demo script, API docs) will be written in Phase 12 once the rest of
-the platform is implemented — this is a placeholder covering what exists today.
+Status: **Phase 6 — Sales Workflow Automation** (foundation, core CRM domain, a HubSpot API
+client, bidirectional sync, durable webhook ingestion/processing, and Deal/Contact stage-change
+automation with Closed-Won onboarding are in place). The full README (architecture diagrams, demo
+script, API docs) will be written in Phase 12 once the rest of the platform is implemented — this
+is a placeholder covering what exists today.
 
 ## Synchronization engine
 
@@ -77,6 +78,39 @@ environment until Phase 8 is complete.
 dotnet test tests/CrmIntegration.UnitTests --filter FullyQualifiedName~Webhooks
 dotnet test tests/CrmIntegration.IntegrationTests --filter FullyQualifiedName~Webhooks
 ```
+
+## Sales workflow automation
+
+Deal stage changes and Contact lifecycle-stage changes are detected and recorded regardless of
+which path caused them (a HubSpot sync/webhook, or an internal REST update), and a Deal reaching
+`ClosedWon` automatically creates an `OnboardingRecord` — see
+[docs/SALES_AUTOMATION.md](docs/SALES_AUTOMATION.md) for the full pipeline, idempotency design
+(both application-level and database-unique-index-level), and sequence diagrams.
+
+**Security note (temporary, development-only):** these endpoints have no authentication yet
+(Phase 8 scope), matching every other endpoint in this project today.
+
+```
+GET  /api/automations/executions?limit=50        # recent AutomationExecutions, newest first
+GET  /api/automations/executions/{id}
+POST /api/automations/executions/{id}/retry       # manually retry a Failed execution
+GET  /api/deals/{id}/stage-history                # full DealStageTransition history
+GET  /api/contacts/{id}/lifecycle-history         # full ContactLifecycleTransition history
+GET  /api/onboarding?limit=50                     # recent OnboardingRecords, newest first
+GET  /api/onboarding/{id}
+```
+
+```
+dotnet test tests/CrmIntegration.UnitTests --filter FullyQualifiedName~Automation
+dotnet test tests/CrmIntegration.IntegrationTests --filter FullyQualifiedName~Automation
+```
+The integration tests use the real Dockerized PostgreSQL (a fake `IHubSpotClient` for the
+sync-triggered tests) to verify the actual database-level idempotency/uniqueness constraints, not
+just the application-layer logic that relies on them. A live HubSpot business-workflow
+verification (Company/Contact/Deal created in a real developer portal, moved to Closed Won and
+back, automation observed end-to-end, then cleaned up) is documented in the Phase 6 completion
+report rather than automated, for the same reason `LiveSyncVerificationTests` isn't part of the
+deterministic suite.
 
 ## HubSpot setup
 

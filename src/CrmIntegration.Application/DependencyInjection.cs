@@ -1,3 +1,4 @@
+using CrmIntegration.Application.Automation;
 using CrmIntegration.Application.Companies;
 using CrmIntegration.Application.Contacts;
 using CrmIntegration.Application.Deals;
@@ -46,6 +47,12 @@ public static class DependencyInjection
         services.AddScoped<IWebhookIngestionService, WebhookIngestionService>();
         services.AddScoped<IIntegrationEventProcessor, IntegrationEventProcessor>();
         services.AddScoped<IIntegrationEventRetryService, IntegrationEventRetryService>();
+
+        services.AddScoped<IAutomationExecutor, AutomationExecutor>();
+        services.AddScoped<IOnboardingService, OnboardingService>();
+        services.AddScoped<IDealStageAutomationService, DealStageAutomationService>();
+        services.AddScoped<IContactLifecycleAutomationService, ContactLifecycleAutomationService>();
+        services.AddScoped<IAutomationRetryService, AutomationRetryService>();
 
         return services;
     }

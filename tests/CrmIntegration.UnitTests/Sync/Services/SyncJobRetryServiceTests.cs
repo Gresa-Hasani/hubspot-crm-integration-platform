@@ -52,7 +52,7 @@ public class SyncJobRetryServiceTests
         var matchService = new ContactMatchService(contactRepository, hubSpot);
         var retryExecutor = new HubSpotRetryExecutor(new InstantRetryDelayProvider(), Options.Create(new SyncRetryOptions()), NullLogger<HubSpotRetryExecutor>.Instance);
         var jobExecutor = new SyncJobExecutor(syncJobRepository, auditLogRepository, retryExecutor, unitOfWork, new FixedTimeProvider(DateTimeOffset.UtcNow), Options.Create(new SyncRetryOptions()), NullLogger<SyncJobExecutor>.Instance);
-        var contactSyncService = new ContactSyncService(contactRepository, mappingRepository, mapper, matchService, hubSpot, jobExecutor, unitOfWork, new FixedTimeProvider(DateTimeOffset.UtcNow), NullLogger<ContactSyncService>.Instance);
+        var contactSyncService = new ContactSyncService(contactRepository, mappingRepository, mapper, matchService, hubSpot, jobExecutor, new NoOpContactLifecycleAutomationService(), unitOfWork, new FixedTimeProvider(DateTimeOffset.UtcNow), NullLogger<ContactSyncService>.Instance);
 
         var service = new SyncJobRetryService(syncJobRepository, contactSyncService, NullCompanySyncService(), NullDealSyncService());
 
@@ -71,7 +71,7 @@ public class SyncJobRetryServiceTests
     private class NotImplementedContactSyncService : IContactSyncService
     {
         public Task<SyncJob> SyncToHubSpotAsync(Guid contactId, string correlationId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public Task<SyncJob> SyncFromHubSpotAsync(string hubSpotId, string correlationId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<SyncJob> SyncFromHubSpotAsync(string hubSpotId, string correlationId, CancellationToken cancellationToken = default, TransitionSource source = TransitionSource.HubSpotSync) => throw new NotImplementedException();
     }
 
     private class NotImplementedCompanySyncService : ICompanySyncService
@@ -83,6 +83,6 @@ public class SyncJobRetryServiceTests
     private class NotImplementedDealSyncService : IDealSyncService
     {
         public Task<SyncJob> SyncToHubSpotAsync(Guid dealId, string correlationId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-        public Task<SyncJob> SyncFromHubSpotAsync(string hubSpotId, string correlationId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        public Task<SyncJob> SyncFromHubSpotAsync(string hubSpotId, string correlationId, CancellationToken cancellationToken = default, TransitionSource source = TransitionSource.HubSpotSync) => throw new NotImplementedException();
     }
 }

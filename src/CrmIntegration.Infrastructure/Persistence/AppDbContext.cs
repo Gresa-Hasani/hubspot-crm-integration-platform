@@ -17,6 +17,9 @@ public class AppDbContext : DbContext
     public DbSet<IntegrationEvent> IntegrationEvents => Set<IntegrationEvent>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<SyncJob> SyncJobs => Set<SyncJob>();
+    public DbSet<DealStageTransition> DealStageTransitions => Set<DealStageTransition>();
+    public DbSet<ContactLifecycleTransition> ContactLifecycleTransitions => Set<ContactLifecycleTransition>();
+    public DbSet<AutomationExecution> AutomationExecutions => Set<AutomationExecution>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

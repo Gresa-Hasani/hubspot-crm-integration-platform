@@ -1,11 +1,44 @@
 # HubSpot CRM Integration & Sales Automation Platform
 
-Status: **Phase 7 — Sales Reporting & Analytics** (foundation, core CRM domain, a HubSpot API
-client, bidirectional sync, durable webhook ingestion/processing, Deal/Contact stage-change
-automation with Closed-Won onboarding, and a read-only Sales Operations reporting/analytics API are
-in place). The full README (architecture diagrams, demo script, API docs) will be written in
-Phase 12 once the rest of the platform is implemented — this is a placeholder covering what exists
-today.
+Status: **Phase 8 — Security, JWT Authentication & RBAC** (foundation, core CRM domain, a HubSpot
+API client, bidirectional sync, durable webhook ingestion/processing, Deal/Contact stage-change
+automation with Closed-Won onboarding, a read-only Sales Operations reporting/analytics API, and
+JWT authentication with role-based access control across every internal endpoint are all in
+place). The full README (architecture diagrams, demo script, API docs) will be written in Phase 12
+once the rest of the platform is implemented — this is a placeholder covering what exists today.
+
+**Every internal API endpoint now requires a valid JWT and role-based authorization** — see
+[docs/SECURITY.md](docs/SECURITY.md) for the full authentication/RBAC design, or jump to
+"Authentication & authorization" below for the quickstart.
+
+## Authentication & authorization
+
+JWT bearer authentication + role-based access control (Admin, Operations, Sales, ReadOnly) protect
+every internal endpoint from Phases 1–7. See [docs/SECURITY.md](docs/SECURITY.md) for the full
+design (password hashing, JWT claims, refresh-token rotation/replay protection, the complete RBAC
+matrix, and honest limitations — e.g. access tokens can't be revoked before they expire).
+
+```
+POST /api/auth/login       # { email, password } -> access + refresh tokens
+POST /api/auth/refresh     # { refreshToken } -> rotated access + refresh tokens (anonymous)
+POST /api/auth/logout      # { refreshToken } -> revokes it (requires a valid access token)
+GET  /api/auth/me          # current user's id/email/role (any authenticated role)
+
+GET  /api/users            # Admin only — list/create/change-role/activate-deactivate/reset-password
+```
+
+**Getting a token locally**: set `BootstrapAdmin__Email`/`BootstrapAdmin__Password` in `.env`
+before the first run to auto-create an initial Admin (see `docs/SECURITY.md` "Admin bootstrap"),
+then `POST /api/auth/login`, copy `accessToken`, and click **Authorize** in Swagger UI
+(`http://localhost:5291/swagger`) to call any protected endpoint from there.
+
+```
+dotnet test tests/CrmIntegration.UnitTests --filter FullyQualifiedName~Security
+dotnet test tests/CrmIntegration.IntegrationTests --filter FullyQualifiedName~Security
+```
+The integration tests exercise the real ASP.NET Core JWT validation pipeline (not just token
+generation), the real RBAC matrix through real HTTP, and genuine concurrent-race scenarios
+(refresh-token replay, last-Admin protection) against real PostgreSQL.
 
 ## Synchronization engine
 
@@ -19,10 +52,8 @@ HubSpot. See:
 
 ### Development sync endpoints
 
-**Security note (temporary, development-only):** these endpoints have no authentication or
-authorization yet. JWT bearer infrastructure exists (Phase 1) but token issuance and
-`[Authorize]`/role-policy enforcement are Phase 8 scope. Do not expose this API outside a trusted
-local/development environment until Phase 8 is complete.
+**Security:** requires a JWT with the `CanManageIntegrations` policy (Admin or Operations role) —
+see [docs/SECURITY.md](docs/SECURITY.md).
 
 ```
 POST /api/sync/contacts/{id}/to-hubspot        # sync an internal Contact -> HubSpot
@@ -70,10 +101,11 @@ GET  /api/webhooks/events/{id}
 POST /api/webhooks/events/{id}/retry           # manually retry a DeadLettered event
 ```
 
-**Security note (temporary, development-only):** the inspection/replay endpoints above have no
-authentication yet (Phase 8 scope). The ingestion endpoint is protected by HubSpot's signature but
-is otherwise unauthenticated too. Do not expose this API outside a trusted local/development
-environment until Phase 8 is complete.
+**Security:** `POST /api/webhooks/hubspot` (ingestion) is intentionally anonymous — HubSpot itself
+calls it and cannot present a JWT; it remains protected by its own v3 signature validation only.
+The inspection/retry endpoints (`GET`/`POST .../events*`) require `CanManageIntegrations`
+(Admin/Operations) — see [docs/SECURITY.md](docs/SECURITY.md) "HubSpot webhook authentication
+exception".
 
 ```
 dotnet test tests/CrmIntegration.UnitTests --filter FullyQualifiedName~Webhooks
@@ -88,8 +120,9 @@ which path caused them (a HubSpot sync/webhook, or an internal REST update), and
 [docs/SALES_AUTOMATION.md](docs/SALES_AUTOMATION.md) for the full pipeline, idempotency design
 (both application-level and database-unique-index-level), and sequence diagrams.
 
-**Security note (temporary, development-only):** these endpoints have no authentication yet
-(Phase 8 scope), matching every other endpoint in this project today.
+**Security:** `AutomationExecution` inspection/retry requires `CanManageAutomations`
+(Admin/Operations); the stage-history/lifecycle-history/onboarding `GET` endpoints require only
+`CanReadCrm` (any authenticated role) — see [docs/SECURITY.md](docs/SECURITY.md).
 
 ```
 GET  /api/automations/executions?limit=50        # recent AutomationExecutions, newest first
@@ -120,8 +153,8 @@ A read-only reporting/query layer over the CRM, sync, webhook, and automation da
 currency/timezone policy, and documented limitations (no fabricated conversion funnels, no
 invented pre-Phase-6 stage-history).
 
-**Security note (temporary, development-only):** unauthenticated, matching every other endpoint in
-this project today (Phase 8 scope).
+**Security:** the `sales/*` reports require `CanViewSalesReports` (Admin/Operations/Sales/ReadOnly
+— every role); `operations/health` requires `CanViewOperationalHealth` (Admin/Operations only).
 
 | Endpoint | Purpose |
 |---|---|

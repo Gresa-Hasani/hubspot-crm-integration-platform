@@ -96,3 +96,12 @@ public enum AutomationStatus
     Skipped,
     Failed
 }
+
+/// <summary>Application user role for RBAC — see docs/SECURITY.md for the full authorization matrix.</summary>
+public enum UserRole
+{
+    Admin,
+    Operations,
+    Sales,
+    ReadOnly
+}

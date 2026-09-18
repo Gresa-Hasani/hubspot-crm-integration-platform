@@ -40,7 +40,7 @@ public class WebhooksApiTests
     public async Task ValidSignedRequest_IsAccepted_AndPersisted()
     {
         using var factory = new WebhookApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var eventId = Random.Shared.Next(1_000_000, 999_000_000).ToString();
         var (request, _) = BuildSignedRequest(SingleEventBody(eventId));
 
@@ -57,7 +57,7 @@ public class WebhooksApiTests
     public async Task InvalidSignature_IsRejected_WithUnauthorized()
     {
         using var factory = new WebhookApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var body = SingleEventBody(Random.Shared.Next(1_000_000, 999_000_000).ToString());
 
         var request = new HttpRequestMessage(HttpMethod.Post, Path) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
@@ -73,7 +73,7 @@ public class WebhooksApiTests
     public async Task MissingSignatureHeaders_AreRejected()
     {
         using var factory = new WebhookApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var body = SingleEventBody(Random.Shared.Next(1_000_000, 999_000_000).ToString());
 
         var response = await client.PostAsync(Path, new StringContent(body, Encoding.UTF8, "application/json"));
@@ -85,7 +85,7 @@ public class WebhooksApiTests
     public async Task StaleTimestamp_IsRejected()
     {
         using var factory = new WebhookApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var body = SingleEventBody(Random.Shared.Next(1_000_000, 999_000_000).ToString());
         var (request, _) = BuildSignedRequest(body, DateTimeOffset.UtcNow.AddMinutes(-10));
 
@@ -98,7 +98,7 @@ public class WebhooksApiTests
     public async Task MalformedJson_ReturnsBadRequest()
     {
         using var factory = new WebhookApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var (request, _) = BuildSignedRequest("not valid json");
 
         var response = await client.SendAsync(request);
@@ -110,7 +110,7 @@ public class WebhooksApiTests
     public async Task BatchOfEvents_AllPersisted()
     {
         using var factory = new WebhookApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var id1 = Random.Shared.Next(1_000_000, 999_000_000);
         var id2 = id1 + 1;
         var body = $$"""
@@ -132,7 +132,7 @@ public class WebhooksApiTests
     public async Task DuplicateRequest_IsAcknowledgedWithoutReprocessing()
     {
         using var factory = new WebhookApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var eventId = Random.Shared.Next(1_000_000, 999_000_000).ToString();
         var body = SingleEventBody(eventId);
 
@@ -157,7 +157,7 @@ public class WebhooksApiTests
     public async Task MixedSupportedAndUnsupportedEvents_UnsupportedDoesNotBlockSupported()
     {
         using var factory = new WebhookApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var id1 = Random.Shared.Next(1_000_000, 999_000_000);
         var id2 = id1 + 1;
         var body = $$"""
@@ -179,7 +179,7 @@ public class WebhooksApiTests
     public async Task GetEvent_ReturnsNotFound_ForUnknownId()
     {
         using var factory = new WebhookApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
 
         var response = await client.GetAsync($"/api/webhooks/events/{Guid.NewGuid()}");
 

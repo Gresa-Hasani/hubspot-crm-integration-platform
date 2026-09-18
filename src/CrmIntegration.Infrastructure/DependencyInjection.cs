@@ -7,12 +7,16 @@ using CrmIntegration.Application.Contacts;
 using CrmIntegration.Application.Deals;
 using CrmIntegration.Application.Integrations.HubSpot;
 using CrmIntegration.Application.Reporting;
+using CrmIntegration.Application.Security;
 using CrmIntegration.Application.Sync;
 using CrmIntegration.Application.Webhooks;
+using CrmIntegration.Domain.Entities;
 using CrmIntegration.Infrastructure.HubSpot;
 using CrmIntegration.Infrastructure.Persistence;
 using CrmIntegration.Infrastructure.Persistence.Repositories;
+using CrmIntegration.Infrastructure.Security;
 using CrmIntegration.Infrastructure.Webhooks;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,6 +39,12 @@ public static class DependencyInjection
         services.AddOptions<JwtOptions>()
             .Bind(configuration.GetSection(JwtOptions.SectionName));
 
+        services.AddOptions<BootstrapAdminOptions>()
+            .Bind(configuration.GetSection(BootstrapAdminOptions.SectionName));
+
+        services.AddOptions<CorsOptions>()
+            .Bind(configuration.GetSection(CorsOptions.SectionName));
+
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -51,6 +61,12 @@ public static class DependencyInjection
         services.AddScoped<IOnboardingRepository, OnboardingRepository>();
         services.AddScoped<ISalesReportingRepository, SalesReportingRepository>();
         services.AddScoped<IOperationsReportingRepository, OperationsReportingRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+        services.AddSingleton<IPasswordHasher<ApplicationUser>, PasswordHasher<ApplicationUser>>();
+        services.AddScoped<IPasswordHasherService, PasswordHasherService>();
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
 
         services.AddHttpClient<IHubSpotClient, HubSpotClient>((serviceProvider, client) =>
         {

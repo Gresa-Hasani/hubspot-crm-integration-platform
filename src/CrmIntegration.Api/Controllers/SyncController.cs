@@ -1,21 +1,19 @@
+using CrmIntegration.Application.Security;
 using CrmIntegration.Application.Sync;
 using CrmIntegration.Application.Sync.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CrmIntegration.Api.Controllers;
 
 /// <summary>
 /// Manual synchronization triggers for development/testing (Phase 4). Full webhook-driven
-/// synchronization is Phase 5.
-///
-/// SECURITY NOTE (temporary, development-only): these endpoints are NOT protected by
-/// authentication/authorization yet. JWT bearer infrastructure exists (Phase 1) but no
-/// token-issuance or [Authorize]/role-policy enforcement has been built — that is Phase 8's
-/// scope. Do not expose this API outside a trusted local/development environment until Phase 8
-/// is complete.
+/// synchronization is Phase 5. Integration administration — Admin/Operations only (RBAC matrix,
+/// docs/SECURITY.md).
 /// </summary>
 [ApiController]
 [Route("api/sync")]
+[Authorize(Policy = AuthorizationPolicies.CanManageIntegrations)]
 public class SyncController : ControllerBase
 {
     private readonly IContactSyncService _contactSyncService;

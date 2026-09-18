@@ -33,7 +33,7 @@ public class SalesReportingApiTests
     public async Task ReportingValidationDataset_AllReports_MatchExplicitlyCalculatedExpectedValues()
     {
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var suffix = Guid.NewGuid().ToString("N")[..8];
 
         // ---- Snapshot "before" for every globally-aggregated (non-date-filtered) report ----
@@ -255,7 +255,7 @@ public class SalesReportingApiTests
     public async Task RevenueReport_EmptyDateRange_ReturnsZeroesNotError()
     {
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
 
         var response = await client.GetAsync("/api/reports/sales/revenue?from=1999-01-01&to=1999-01-31");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -274,7 +274,7 @@ public class SalesReportingApiTests
     public async Task InvalidFilters_ReturnBadRequest(string requestUri)
     {
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
 
         var response = await client.GetAsync(requestUri);
 
@@ -285,7 +285,7 @@ public class SalesReportingApiTests
     public async Task ActivityFeed_Limit_IsBoundedToMaximum()
     {
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
 
         var response = await client.GetAsync("/api/reports/sales/activity?limit=99999");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -298,7 +298,7 @@ public class SalesReportingApiTests
     public async Task AllReportEndpoints_ReturnOk_OnAnEmptyOrExistingDatabase()
     {
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
 
         string[] endpoints =
         [

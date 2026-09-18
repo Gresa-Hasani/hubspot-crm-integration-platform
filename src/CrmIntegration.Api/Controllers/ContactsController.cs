@@ -1,4 +1,6 @@
 using CrmIntegration.Application.Contacts;
+using CrmIntegration.Application.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CrmIntegration.Api.Controllers;
@@ -15,10 +17,12 @@ public class ContactsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = AuthorizationPolicies.CanReadCrm)]
     public async Task<ActionResult<IReadOnlyList<ContactResponse>>> List(CancellationToken cancellationToken) =>
         Ok(await _contactService.ListAsync(cancellationToken));
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanReadCrm)]
     public async Task<ActionResult<ContactResponse>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var contact = await _contactService.GetByIdAsync(id, cancellationToken);
@@ -26,6 +30,7 @@ public class ContactsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicies.CanWriteCrm)]
     public async Task<ActionResult<ContactResponse>> Create(CreateContactRequest request, CancellationToken cancellationToken)
     {
         var created = await _contactService.CreateAsync(request, cancellationToken, CorrelationId());
@@ -33,6 +38,7 @@ public class ContactsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanWriteCrm)]
     public async Task<ActionResult<ContactResponse>> Update(Guid id, UpdateContactRequest request, CancellationToken cancellationToken) =>
         Ok(await _contactService.UpdateAsync(id, request, cancellationToken, CorrelationId()));
 

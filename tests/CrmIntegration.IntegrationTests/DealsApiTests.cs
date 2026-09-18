@@ -6,14 +6,19 @@ using Xunit;
 
 namespace CrmIntegration.IntegrationTests;
 
-public class DealsApiTests : IClassFixture<CrmApiFactory>
+/// <summary>Uses an Admin-authenticated client throughout: this file tests CRM business logic, not RBAC — RBAC itself is tested explicitly in RbacMatrixTests.</summary>
+public class DealsApiTests : IClassFixture<CrmApiFactory>, IAsyncLifetime
 {
-    private readonly HttpClient _client;
+    private readonly CrmApiFactory _factory;
+    private HttpClient _client = null!;
 
     public DealsApiTests(CrmApiFactory factory)
     {
-        _client = factory.CreateClient();
+        _factory = factory;
     }
+
+    public async Task InitializeAsync() => _client = await _factory.CreateAuthenticatedClientAsync(UserRole.Admin);
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task CreateThenUpdate_ToClosedWon_DerivesWonStatus()

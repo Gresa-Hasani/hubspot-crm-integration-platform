@@ -20,6 +20,8 @@ public class AppDbContext : DbContext
     public DbSet<DealStageTransition> DealStageTransitions => Set<DealStageTransition>();
     public DbSet<ContactLifecycleTransition> ContactLifecycleTransitions => Set<ContactLifecycleTransition>();
     public DbSet<AutomationExecution> AutomationExecutions => Set<AutomationExecution>();
+    public DbSet<ApplicationUser> ApplicationUsers => Set<ApplicationUser>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -1,4 +1,6 @@
 using CrmIntegration.Application.Reporting;
+using CrmIntegration.Application.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CrmIntegration.Api.Controllers;
@@ -8,11 +10,12 @@ namespace CrmIntegration.Api.Controllers;
 /// automation data. See docs/REPORTING.md for KPI formulas, date/currency policy, and known
 /// limitations. Returns dedicated DTOs only — never EF entities.
 ///
-/// SECURITY NOTE (temporary, development-only): these endpoints have no authentication or
-/// authorization yet, matching every other endpoint in this project today (Phase 8 scope).
+/// RBAC (docs/SECURITY.md): available to every role, including ReadOnly — sales reporting is a
+/// read-only view all four roles are expected to use.
 /// </summary>
 [ApiController]
 [Route("api/reports/sales")]
+[Authorize(Policy = AuthorizationPolicies.CanViewSalesReports)]
 public class SalesReportsController : ControllerBase
 {
     private readonly ISalesReportingService _reportingService;

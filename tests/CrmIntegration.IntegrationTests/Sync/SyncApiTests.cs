@@ -17,7 +17,7 @@ public class SyncApiTests
     public async Task SyncCompanyToHubSpot_CreatesRemoteObject_AndPersistsMapping()
     {
         using var factory = new SyncApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
 
         var companyResponse = await client.PostAsJsonAsync("/api/companies", new CreateCompanyRequest
         {
@@ -38,7 +38,7 @@ public class SyncApiTests
     public async Task SyncCompanyToHubSpot_IsIdempotent_AcrossTwoHttpCalls()
     {
         using var factory = new SyncApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
 
         var companyResponse = await client.PostAsJsonAsync("/api/companies", new CreateCompanyRequest
         {
@@ -59,7 +59,7 @@ public class SyncApiTests
     public async Task SyncContactFromHubSpot_ImportsNewInternalContact()
     {
         using var factory = new SyncApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var uniqueEmail = $"import.{Guid.NewGuid():N}@acme.example";
         var record = await factory.HubSpotClient.CreateContactAsync(new Dictionary<string, string?>
         {
@@ -83,7 +83,7 @@ public class SyncApiTests
     public async Task SyncContactFromHubSpot_IsIdempotent_AcrossTwoHttpCalls()
     {
         using var factory = new SyncApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var record = await factory.HubSpotClient.CreateContactAsync(new Dictionary<string, string?>
         {
             ["email"] = $"import.{Guid.NewGuid():N}@acme.example"
@@ -101,7 +101,7 @@ public class SyncApiTests
     public async Task GetJob_ReturnsThePersistedJob_AndListJobsIncludesIt()
     {
         using var factory = new SyncApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var companyResponse = await client.PostAsJsonAsync("/api/companies", new CreateCompanyRequest { Name = "Lookup Co " + Guid.NewGuid().ToString("N")[..8] });
         var company = await companyResponse.Content.ReadFromJsonAsync<CompanyResponse>(CrmApiFactory.JsonOptions);
         var syncResponse = await client.PostAsync($"/api/sync/companies/{company!.Id}/to-hubspot", null);
@@ -119,7 +119,7 @@ public class SyncApiTests
     public async Task GetJob_ReturnsNotFound_ForUnknownId()
     {
         using var factory = new SyncApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
 
         var response = await client.GetAsync($"/api/sync/jobs/{Guid.NewGuid()}");
 
@@ -130,7 +130,7 @@ public class SyncApiTests
     public async Task SyncSucceeds_WritesAuditLogEntry_InRealDatabase()
     {
         using var factory = new SyncApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var companyResponse = await client.PostAsJsonAsync("/api/companies", new CreateCompanyRequest { Name = "Audited Co " + Guid.NewGuid().ToString("N")[..8] });
         var company = await companyResponse.Content.ReadFromJsonAsync<CompanyResponse>(CrmApiFactory.JsonOptions);
 

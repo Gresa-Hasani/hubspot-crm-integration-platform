@@ -96,4 +96,7 @@ public class ConflictingUnitOfWork : CrmIntegration.Application.Common.IUnitOfWo
 
         return Task.CompletedTask;
     }
+
+    public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken = default) =>
+        operation(cancellationToken);
 }

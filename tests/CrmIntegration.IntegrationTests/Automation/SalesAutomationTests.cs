@@ -24,7 +24,7 @@ public class SalesAutomationTests
     public async Task InternalUpdate_DealToClosedWon_CreatesTransition_RunsAutomation_AndCreatesOnboarding()
     {
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var suffix = Guid.NewGuid().ToString("N")[..8];
 
         var company = await CreateCompanyAsync(client, $"Acme Corp {suffix}");
@@ -74,7 +74,7 @@ public class SalesAutomationTests
     public async Task InternalUpdate_ContactLifecycleChange_CreatesTransition_ExposedViaHistoryEndpoint()
     {
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var suffix = Guid.NewGuid().ToString("N")[..8];
 
         var contact = await CreateContactAsync(client, $"lifecycle.{suffix}@acme.example", companyId: null);
@@ -103,7 +103,7 @@ public class SalesAutomationTests
     public async Task InternalUpdate_DealHasNoCompany_SkipsOnboarding_ButStillRecordsTransitionAndExecution()
     {
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var suffix = Guid.NewGuid().ToString("N")[..8];
 
         var deal = await CreateDealAsync(client, $"No Company Deal {suffix}", DealStage.Negotiation, companyId: null, contactId: null);
@@ -132,7 +132,7 @@ public class SalesAutomationTests
     public async Task ReenteringClosedWon_ProducesFreshAutomationExecution_ButOnboardingRecordStaysUnique()
     {
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var suffix = Guid.NewGuid().ToString("N")[..8];
 
         var company = await CreateCompanyAsync(client, $"Re-entry Co {suffix}");
@@ -157,7 +157,7 @@ public class SalesAutomationTests
     public async Task ManualRetry_ReRunsFailedExecution_CreatesOnboardingRecord_AndPreservesOriginalRow()
     {
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var suffix = Guid.NewGuid().ToString("N")[..8];
 
         var company = await CreateCompanyAsync(client, $"Retry Co {suffix}");
@@ -205,7 +205,7 @@ public class SalesAutomationTests
     public async Task RetryingNonFailedExecution_ReturnsBadRequest()
     {
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
 
         Guid succeededExecutionId;
         using (var scope = factory.Services.CreateScope())
@@ -230,7 +230,7 @@ public class SalesAutomationTests
     public async Task GetExecution_ReturnsNotFound_ForUnknownId()
     {
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
 
         var response = await client.GetAsync($"/api/automations/executions/{Guid.NewGuid()}");
 

@@ -1,18 +1,24 @@
 using System.Net;
 using System.Net.Http.Json;
 using CrmIntegration.Application.Companies;
+using CrmIntegration.Domain.Enums;
 using Xunit;
 
 namespace CrmIntegration.IntegrationTests;
 
-public class CompaniesApiTests : IClassFixture<CrmApiFactory>
+/// <summary>Uses an Admin-authenticated client throughout: this file tests CRM business logic, not RBAC — RBAC itself is tested explicitly in RbacMatrixTests.</summary>
+public class CompaniesApiTests : IClassFixture<CrmApiFactory>, IAsyncLifetime
 {
-    private readonly HttpClient _client;
+    private readonly CrmApiFactory _factory;
+    private HttpClient _client = null!;
 
     public CompaniesApiTests(CrmApiFactory factory)
     {
-        _client = factory.CreateClient();
+        _factory = factory;
     }
+
+    public async Task InitializeAsync() => _client = await _factory.CreateAuthenticatedClientAsync(UserRole.Admin);
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task CreateThenGet_RoundTripsANormalizedCompany()

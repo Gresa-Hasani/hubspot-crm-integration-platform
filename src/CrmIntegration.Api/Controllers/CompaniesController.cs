@@ -1,4 +1,6 @@
 using CrmIntegration.Application.Companies;
+using CrmIntegration.Application.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CrmIntegration.Api.Controllers;
@@ -15,10 +17,12 @@ public class CompaniesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = AuthorizationPolicies.CanReadCrm)]
     public async Task<ActionResult<IReadOnlyList<CompanyResponse>>> List(CancellationToken cancellationToken) =>
         Ok(await _companyService.ListAsync(cancellationToken));
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanReadCrm)]
     public async Task<ActionResult<CompanyResponse>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var company = await _companyService.GetByIdAsync(id, cancellationToken);
@@ -26,6 +30,7 @@ public class CompaniesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicies.CanWriteCrm)]
     public async Task<ActionResult<CompanyResponse>> Create(CreateCompanyRequest request, CancellationToken cancellationToken)
     {
         var created = await _companyService.CreateAsync(request, cancellationToken);
@@ -33,6 +38,7 @@ public class CompaniesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanWriteCrm)]
     public async Task<ActionResult<CompanyResponse>> Update(Guid id, UpdateCompanyRequest request, CancellationToken cancellationToken) =>
         Ok(await _companyService.UpdateAsync(id, request, cancellationToken));
 }

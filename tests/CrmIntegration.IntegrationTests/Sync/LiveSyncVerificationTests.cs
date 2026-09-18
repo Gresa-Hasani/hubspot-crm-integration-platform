@@ -42,7 +42,7 @@ public class LiveSyncVerificationTests
         }
 
         using var factory = new CrmApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(CrmIntegration.Domain.Enums.UserRole.Admin);
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var createdHubSpotIds = new List<(HubSpotObjectType Type, string Id)>();
         var createdInternalCompanyIds = new List<Guid>();

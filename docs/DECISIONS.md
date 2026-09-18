@@ -224,3 +224,66 @@ full entity lists and aggregate in memory instead of pushing the aggregation int
 Dedicated `ISalesReportingRepository`/`IOperationsReportingRepository` interfaces keep both
 responsibilities clean, mirroring the same "one focused repository per concern" pattern Phase 6
 already established for `IDealStageTransitionRepository`, `IAutomationExecutionRepository`, etc.
+
+## Why PasswordHasher<TUser> instead of ASP.NET Core Identity's full EF store? (Phase 8)
+
+`Microsoft.Extensions.Identity.Core` (the lightweight package) ships `PasswordHasher<TUser>` and
+`IPasswordHasher<TUser>` with no dependency on `Microsoft.AspNetCore.Identity.EntityFrameworkCore`
+or its `IdentityUser`/`IdentityDbContext` machinery. This project already has its own
+`ApplicationUser` entity and its own repository/UnitOfWork conventions (matching every other
+entity in this codebase); pulling in full ASP.NET Core Identity would mean either fighting its
+EF Core store conventions or running two parallel persistence patterns side by side. The framework
+password hasher is the one primitive actually needed — using just that, wrapped in
+`IPasswordHasherService`, keeps one consistent persistence story while still satisfying "use an
+established .NET security library, never custom cryptography."
+
+## Why is refresh-token rotation an atomic conditional UPDATE, not load-then-save? (Phase 8)
+
+The first implementation loaded the `RefreshToken` row, checked `IsActive` in memory, then mutated
+and called `SaveChangesAsync`. Under PostgreSQL's default READ COMMITTED isolation this is
+genuinely unsafe: two simultaneous rotation requests for the same token can both pass the in-memory
+`IsActive` check before either commits, so both could succeed — defeating "only one rotation may
+succeed." The fix reuses the exact pattern Phase 5 established for `IntegrationEvent` claiming: one
+atomic `UPDATE ... WHERE Id = @id AND RevokedAt IS NULL` (via EF Core's `ExecuteUpdateAsync`), and
+only proceeds to mint a new token if that single UPDATE actually affected a row. This was verified
+under genuine 8-way concurrent load against real PostgreSQL (`ConcurrencyTests`), not just asserted
+by inspection — see docs/SECURITY.md "Refresh rotation / replay protection" for the bug this
+replaced and how it was caught.
+
+## Why SERIALIZABLE transactions for last-Admin protection, not just a count check? (Phase 8)
+
+"Count active Admins, then decide whether to demote/deactivate one" is the textbook write-skew
+anomaly: two concurrent requests can each read "2 active Admins exist" before either commits, and
+both proceed, leaving zero. A plain in-process check (as used for every other validation in this
+codebase) cannot detect this because the two transactions never conflict on any single row on their
+own — the conflict is emergent across the read set. PostgreSQL's SERIALIZABLE isolation (Serializable
+Snapshot Isolation) is specifically designed to detect this class of anomaly and abort one of the two
+transactions, which `IUnitOfWork.ExecuteSerializableAsync` translates into a `409 Conflict`. This is
+the one place in the codebase that needed a real database transaction wrapping business logic rather
+than a single `SaveChangesAsync` call — reserved for exactly this one invariant, not applied broadly,
+per the project's general preference for the simplest mechanism that's actually correct (compare the
+Phase 5 decision on conditional-UPDATE-over-row-locking, which is the opposite tradeoff for a
+different problem shape).
+
+## Why does logout not revoke the paired access token? (Phase 8)
+
+JWT access tokens are validated statelessly (signature/issuer/audience/expiry only) with no
+per-request database lookup — that's the entire point of using JWTs instead of server-side
+sessions, and this project doesn't build a token-blocklist or a per-request `IsActive` check
+(either of which would reintroduce a database round-trip on every authenticated request, the exact
+cost JWTs are chosen to avoid). Given that, "logout" can only mean "revoke the refresh token,"
+which it does immediately and verifiably. The access token remains valid until its own short
+(`Jwt:ExpirationMinutes`, default 60) expiry. This is documented explicitly rather than glossed
+over — see docs/SECURITY.md "Logout / revocation semantics" — because claiming instant access-token
+revocation without implementing it would misrepresent what this system actually does.
+
+## Why does GET Deal-stage-history/Contact-lifecycle-history/onboarding use CanReadCrm, not CanManageAutomations? (Phase 8)
+
+The Phase 8 spec's own RBAC narrative asks for Sales to have "onboarding reads where appropriate"
+and ReadOnly to have "onboarding/history GET endpoints where appropriate," while separately scoping
+"automation inspection/retry" to Admin/Operations. Both can't be true if every endpoint on
+`AutomationsController` shared one policy. Splitting them by what they actually are — stage/lifecycle
+history and onboarding records are CRM-adjacent read views (the same shape of data GET
+Contacts/Companies/Deals already exposes to every role), while `AutomationExecution` rows are
+genuine automation-pipeline administration — resolves the apparent conflict faithfully rather than
+picking one reading and silently dropping the other.

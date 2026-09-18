@@ -1,4 +1,6 @@
+using CrmIntegration.Application.Security;
 using CrmIntegration.Application.Webhooks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CrmIntegration.Api.Controllers;
@@ -8,13 +10,15 @@ namespace CrmIntegration.Api.Controllers;
 /// signature -> hand off to IWebhookIngestionService -> respond. No Phase 4 sync service is
 /// called from here — that happens later, out of the HTTP request, via the background processor.
 ///
-/// SECURITY NOTE (temporary, development-only): the inspection/replay endpoints below have no
-/// authentication yet (Phase 8 scope) — the ingestion endpoint itself is protected by HubSpot's
-/// signature, but GET /events and POST /events/{id}/retry are not. Do not expose this API outside
-/// a trusted local/development environment until Phase 8 is complete.
+/// SECURITY: ReceiveHubSpotWebhook is intentionally [AllowAnonymous] — HubSpot itself must be able
+/// to call it, and it cannot present a JWT. Its security is HubSpot's own v3 signature validation
+/// (unchanged from Phase 5), not authentication — see docs/SECURITY.md "HubSpot webhook
+/// authentication exception". The inspection/retry endpoints below (GET/POST /events*) are real
+/// internal administration and require CanManageIntegrations (Admin/Operations) like SyncController.
 /// </summary>
 [ApiController]
 [Route("api/webhooks")]
+[Authorize(Policy = AuthorizationPolicies.CanManageIntegrations)]
 public class WebhooksController : ControllerBase
 {
     private readonly IHubSpotWebhookSignatureValidator _signatureValidator;
@@ -38,6 +42,7 @@ public class WebhooksController : ControllerBase
     }
 
     [HttpPost("hubspot")]
+    [AllowAnonymous]
     public async Task<IActionResult> ReceiveHubSpotWebhook(CancellationToken cancellationToken)
     {
         var correlationId = Request.Headers["X-Correlation-ID"].FirstOrDefault() ?? Guid.NewGuid().ToString();

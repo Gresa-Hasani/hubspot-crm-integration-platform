@@ -134,6 +134,9 @@ public class OnboardingServiceTests
 
             return Task.CompletedTask;
         }
+
+        public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken = default) =>
+            operation(cancellationToken);
     }
 
     /// <summary>Returns null from the first GetByDealIdAsync call (simulating "no row yet"), then behaves like a normal repository seeded with the winning row.</summary>

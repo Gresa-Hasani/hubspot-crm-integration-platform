@@ -23,7 +23,7 @@ public class HubSpotSyncAutomationTests
     public async Task SyncFromHubSpot_ImportedDealAlreadyClosedWon_CreatesTransitionAutomationAndOnboarding()
     {
         using var factory = new SyncApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var suffix = Guid.NewGuid().ToString("N")[..8];
 
         var companyResponse = await client.PostAsJsonAsync("/api/companies", new CreateCompanyRequest { Name = $"HubSpot Sync Co {suffix}" });
@@ -90,7 +90,7 @@ public class HubSpotSyncAutomationTests
     public async Task SyncFromHubSpot_ExistingDealTransitionsToClosedWon_RecordsFromStage()
     {
         using var factory = new SyncApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         var suffix = Guid.NewGuid().ToString("N")[..8];
 
         var dealRecord = await factory.HubSpotClient.CreateDealAsync(new Dictionary<string, string?>

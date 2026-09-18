@@ -88,7 +88,7 @@ public class IntegrationEventProcessingTests
     public async Task DeadLetteredEvent_CanBeManuallyRetried_ThroughApi()
     {
         using var factory = new WebhookApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         Guid integrationEventId;
 
         using (var scope = factory.Services.CreateScope())
@@ -126,7 +126,7 @@ public class IntegrationEventProcessingTests
     public async Task RetryingNonDeadLetteredEvent_ReturnsBadRequest()
     {
         using var factory = new WebhookApiFactory();
-        var client = factory.CreateClient();
+        var client = await factory.CreateAuthenticatedClientAsync(UserRole.Admin);
         Guid integrationEventId;
 
         using (var scope = factory.Services.CreateScope())

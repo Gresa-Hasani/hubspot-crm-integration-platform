@@ -83,6 +83,9 @@ public class FakeUnitOfWork : IUnitOfWork
         SaveChangesCallCount++;
         return Task.CompletedTask;
     }
+
+    public Task<T> ExecuteSerializableAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken = default) =>
+        operation(cancellationToken);
 }
 
 public class FakeEntityMappingRepository : IEntityMappingRepository

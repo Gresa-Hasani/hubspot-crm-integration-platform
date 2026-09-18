@@ -1,4 +1,6 @@
 using CrmIntegration.Application.Reporting;
+using CrmIntegration.Application.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CrmIntegration.Api.Controllers;
@@ -8,11 +10,12 @@ namespace CrmIntegration.Api.Controllers;
 /// AutomationExecution. This is reporting, not Phase 9 observability: no tokens, payloads, stack
 /// traces, or raw exception details are ever returned. See docs/REPORTING.md.
 ///
-/// SECURITY NOTE (temporary, development-only): unauthenticated, matching every other endpoint
-/// in this project today (Phase 8 scope).
+/// RBAC (docs/SECURITY.md): Admin/Operations only — this is operational/integration health, not
+/// a Sales-facing report.
 /// </summary>
 [ApiController]
 [Route("api/reports/operations")]
+[Authorize(Policy = AuthorizationPolicies.CanViewOperationalHealth)]
 public class OperationsReportsController : ControllerBase
 {
     private readonly IOperationsReportingService _reportingService;

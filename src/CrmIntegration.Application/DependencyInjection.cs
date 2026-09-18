@@ -4,6 +4,7 @@ using CrmIntegration.Application.Contacts;
 using CrmIntegration.Application.Deals;
 using CrmIntegration.Application.Integrations.HubSpot;
 using CrmIntegration.Application.Reporting;
+using CrmIntegration.Application.Security;
 using CrmIntegration.Application.Sync;
 using CrmIntegration.Application.Sync.Mapping;
 using CrmIntegration.Application.Sync.Matching;
@@ -57,6 +58,11 @@ public static class DependencyInjection
 
         services.AddScoped<ISalesReportingService, SalesReportingService>();
         services.AddScoped<IOperationsReportingService, OperationsReportingService>();
+
+        services.AddScoped<IAuthenticationService, AuthenticationService>();
+        services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+        services.AddScoped<IUserManagementService, UserManagementService>();
+        services.AddScoped<IAdminBootstrapService, AdminBootstrapService>();
 
         return services;
     }

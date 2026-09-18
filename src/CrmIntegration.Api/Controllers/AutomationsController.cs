@@ -1,4 +1,6 @@
 using CrmIntegration.Application.Automation;
+using CrmIntegration.Application.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CrmIntegration.Api.Controllers;
@@ -8,8 +10,10 @@ namespace CrmIntegration.Api.Controllers;
 /// and manual retry. Read-only entity history (stage/lifecycle transitions) lives here too since
 /// it is a byproduct of the same automation pipeline.
 ///
-/// SECURITY NOTE (temporary, development-only): not protected by authentication/authorization
-/// yet, matching the existing SyncController/WebhooksController posture. Phase 8 scope.
+/// RBAC (docs/SECURITY.md): AutomationExecution inspection/retry is Admin/Operations
+/// administration (CanManageAutomations). The stage-history/lifecycle-history/onboarding GET
+/// endpoints are CRM-adjacent read views available to every role (CanReadCrm) — the same set as
+/// GET Contacts/Companies/Deals — not automation administration.
 /// </summary>
 [ApiController]
 [Route("api")]
@@ -36,6 +40,7 @@ public class AutomationsController : ControllerBase
     }
 
     [HttpGet("automations/executions")]
+    [Authorize(Policy = AuthorizationPolicies.CanManageAutomations)]
     public async Task<ActionResult<IReadOnlyList<AutomationExecutionResponse>>> ListExecutions(
         CancellationToken cancellationToken, [FromQuery] int limit = 50)
     {
@@ -44,6 +49,7 @@ public class AutomationsController : ControllerBase
     }
 
     [HttpGet("automations/executions/{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanManageAutomations)]
     public async Task<ActionResult<AutomationExecutionResponse>> GetExecution(Guid id, CancellationToken cancellationToken)
     {
         var execution = await _automationExecutionRepository.GetByIdAsync(id, cancellationToken);
@@ -52,6 +58,7 @@ public class AutomationsController : ControllerBase
 
     /// <summary>Manually re-runs a Failed AutomationExecution. See IAutomationRetryService for why this creates a new execution row rather than resuming in place.</summary>
     [HttpPost("automations/executions/{id:guid}/retry")]
+    [Authorize(Policy = AuthorizationPolicies.CanManageAutomations)]
     public async Task<ActionResult<AutomationExecutionResponse>> RetryExecution(Guid id, CancellationToken cancellationToken)
     {
         var execution = await _automationRetryService.RetryAsync(id, cancellationToken);
@@ -59,6 +66,7 @@ public class AutomationsController : ControllerBase
     }
 
     [HttpGet("deals/{id:guid}/stage-history")]
+    [Authorize(Policy = AuthorizationPolicies.CanReadCrm)]
     public async Task<ActionResult<IReadOnlyList<DealStageTransitionResponse>>> GetDealStageHistory(Guid id, CancellationToken cancellationToken)
     {
         var transitions = await _dealStageTransitionRepository.ListByDealAsync(id, cancellationToken);
@@ -66,6 +74,7 @@ public class AutomationsController : ControllerBase
     }
 
     [HttpGet("contacts/{id:guid}/lifecycle-history")]
+    [Authorize(Policy = AuthorizationPolicies.CanReadCrm)]
     public async Task<ActionResult<IReadOnlyList<ContactLifecycleTransitionResponse>>> GetContactLifecycleHistory(Guid id, CancellationToken cancellationToken)
     {
         var transitions = await _contactLifecycleTransitionRepository.ListByContactAsync(id, cancellationToken);
@@ -73,6 +82,7 @@ public class AutomationsController : ControllerBase
     }
 
     [HttpGet("onboarding")]
+    [Authorize(Policy = AuthorizationPolicies.CanReadCrm)]
     public async Task<ActionResult<IReadOnlyList<OnboardingRecordResponse>>> ListOnboardingRecords(
         CancellationToken cancellationToken, [FromQuery] int limit = 50)
     {
@@ -81,6 +91,7 @@ public class AutomationsController : ControllerBase
     }
 
     [HttpGet("onboarding/{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanReadCrm)]
     public async Task<ActionResult<OnboardingRecordResponse>> GetOnboardingRecord(Guid id, CancellationToken cancellationToken)
     {
         var record = await _onboardingRepository.GetByIdAsync(id, cancellationToken);

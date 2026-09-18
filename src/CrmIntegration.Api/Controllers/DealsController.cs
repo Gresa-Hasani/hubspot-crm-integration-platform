@@ -1,4 +1,6 @@
 using CrmIntegration.Application.Deals;
+using CrmIntegration.Application.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CrmIntegration.Api.Controllers;
@@ -15,10 +17,12 @@ public class DealsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = AuthorizationPolicies.CanReadCrm)]
     public async Task<ActionResult<IReadOnlyList<DealResponse>>> List(CancellationToken cancellationToken) =>
         Ok(await _dealService.ListAsync(cancellationToken));
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanReadCrm)]
     public async Task<ActionResult<DealResponse>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var deal = await _dealService.GetByIdAsync(id, cancellationToken);
@@ -26,6 +30,7 @@ public class DealsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicies.CanWriteCrm)]
     public async Task<ActionResult<DealResponse>> Create(CreateDealRequest request, CancellationToken cancellationToken)
     {
         var created = await _dealService.CreateAsync(request, cancellationToken, CorrelationId());
@@ -33,6 +38,7 @@ public class DealsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.CanWriteCrm)]
     public async Task<ActionResult<DealResponse>> Update(Guid id, UpdateDealRequest request, CancellationToken cancellationToken) =>
         Ok(await _dealService.UpdateAsync(id, request, cancellationToken, CorrelationId()));
 
